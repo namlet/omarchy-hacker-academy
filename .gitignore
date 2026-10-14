@@ -1,0 +1,8 @@
+# Editor and OS clutter
+*.swp
+*~
+.DS_Store
+
+# QML tooling caches
+*.qmlc
+.qmlls.ini
