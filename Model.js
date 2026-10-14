@@ -15,18 +15,21 @@ function isHoldKey(key) {
 }
 
 function initialKeyState() {
-  return { shiftHeld: false, taps: 0 }
+  return { shiftHeld: false, shiftScanCode: 0, taps: 0 }
 }
 
 // A tap is one press of a non-hold key; holding a key down (auto-repeat) is still one tap.
-function pressKey(state, key, isAutoRepeat) {
-  if (key === KEY_SHIFT) return { shiftHeld: true, taps: state.taps }
+// scanCode identifies the physical key, so its release is recognised even when the
+// keyboard layout reports the release under a different key code.
+function pressKey(state, key, isAutoRepeat, scanCode) {
+  if (key === KEY_SHIFT) return { shiftHeld: true, shiftScanCode: scanCode || 0, taps: state.taps }
   if (isHoldKey(key) || isAutoRepeat) return state
-  return { shiftHeld: state.shiftHeld, taps: state.taps + 1 }
+  return { shiftHeld: state.shiftHeld, shiftScanCode: state.shiftScanCode, taps: state.taps + 1 }
 }
 
-function releaseKey(state, key) {
-  if (key === KEY_SHIFT) return { shiftHeld: false, taps: state.taps }
+function releaseKey(state, key, scanCode) {
+  var samePhysicalKey = scanCode && scanCode === state.shiftScanCode
+  if (key === KEY_SHIFT || samePhysicalKey) return { shiftHeld: false, shiftScanCode: 0, taps: state.taps }
   return state
 }
 

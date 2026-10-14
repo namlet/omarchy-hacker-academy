@@ -16,7 +16,7 @@ Item {
     when: windowShown
 
     function init() {
-      trainer.keyState = { shiftHeld: false, taps: 0 }
+      trainer.keyState = { shiftHeld: false, shiftScanCode: 0, taps: 0 }
       trainer.forceActiveFocus()
     }
 

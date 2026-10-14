@@ -27,10 +27,10 @@ FocusScope {
       root.exitRequested()
       return
     }
-    root.keyState = Model.pressKey(root.keyState, event.key, event.isAutoRepeat)
+    root.keyState = Model.pressKey(root.keyState, event.key, event.isAutoRepeat, event.nativeScanCode)
   }
   Keys.onReleased: (event) => {
-    if (!event.isAutoRepeat) root.keyState = Model.releaseKey(root.keyState, event.key)
+    if (!event.isAutoRepeat) root.keyState = Model.releaseKey(root.keyState, event.key, event.nativeScanCode)
   }
 
   ColumnLayout {

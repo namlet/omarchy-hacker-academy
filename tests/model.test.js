@@ -19,6 +19,16 @@ test("shift is held only between press and release", () => {
   assert.equal(state.shiftHeld, false)
 })
 
+test("shift released as a different key code but the same physical key still lets go", () => {
+  // Captured on a real keyboard: Left Shift (scan code 50) is pressed as Shift
+  // but its release is reported as Caps Lock (0x01000024).
+  const KEY_CAPSLOCK = 0x01000024
+  let state = Model.pressKey(Model.initialKeyState(), Model.KEY_SHIFT, false, 50)
+  assert.equal(state.shiftHeld, true)
+  state = Model.releaseKey(state, KEY_CAPSLOCK, 50)
+  assert.equal(state.shiftHeld, false)
+})
+
 test("each letter press is one tap; auto-repeat and hold keys are not", () => {
   let state = Model.initialKeyState()
   state = Model.pressKey(state, KEY_A, false)
@@ -30,7 +40,8 @@ test("each letter press is one tap; auto-repeat and hold keys are not", () => {
 test("tapping a letter while holding shift keeps shift held", () => {
   let state = Model.pressKey(Model.initialKeyState(), Model.KEY_SHIFT, false)
   state = Model.pressKey(state, KEY_A, false)
-  assert.deepEqual(state, { shiftHeld: true, taps: 1 })
+  assert.equal(state.shiftHeld, true)
+  assert.equal(state.taps, 1)
 })
 
 test("openwindow events parse, keeping commas in the title", () => {
