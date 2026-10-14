@@ -8,29 +8,60 @@ var KEY_ALT = 0x01000023
 var KEY_SUPER_L = 0x01000053
 var KEY_SUPER_R = 0x01000054
 
-var HOLD_KEYS = [KEY_SHIFT, KEY_CONTROL, KEY_META, KEY_ALT, KEY_SUPER_L, KEY_SUPER_R]
-
-function isHoldKey(key) {
-  return HOLD_KEYS.indexOf(key) !== -1
+// Which hold key a Qt key code is: "shift", "ctrl", "alt", "super", or "" for tap keys.
+function holdName(key) {
+  if (key === KEY_SHIFT) return "shift"
+  if (key === KEY_CONTROL) return "ctrl"
+  if (key === KEY_ALT) return "alt"
+  if (key === KEY_META || key === KEY_SUPER_L || key === KEY_SUPER_R) return "super"
+  return ""
 }
 
+function isHoldKey(key) {
+  return holdName(key) !== ""
+}
+
+// held maps a physical key to the hold key it pressed. Releases are matched by
+// physical key (scan code) because layouts and options can report a release
+// under a different key code -- Omarchy's default shift:both_capslock_cancel
+// reports Shift's release as Caps Lock. Without a scan code, the key code stands in.
 function initialKeyState() {
-  return { shiftHeld: false, shiftScanCode: 0, taps: 0 }
+  return { held: {}, taps: 0 }
+}
+
+function physicalKey(key, scanCode) {
+  return scanCode ? "scan:" + scanCode : "key:" + key
+}
+
+function withHeld(held, id, name) {
+  var next = {}
+  for (var k in held) if (k !== id) next[k] = held[k]
+  if (name) next[id] = name
+  return next
 }
 
 // A tap is one press of a non-hold key; holding a key down (auto-repeat) is still one tap.
-// scanCode identifies the physical key, so its release is recognised even when the
-// keyboard layout reports the release under a different key code.
 function pressKey(state, key, isAutoRepeat, scanCode) {
-  if (key === KEY_SHIFT) return { shiftHeld: true, shiftScanCode: scanCode || 0, taps: state.taps }
-  if (isHoldKey(key) || isAutoRepeat) return state
-  return { shiftHeld: state.shiftHeld, shiftScanCode: state.shiftScanCode, taps: state.taps + 1 }
+  var name = holdName(key)
+  if (name) return { held: withHeld(state.held, physicalKey(key, scanCode), name), taps: state.taps }
+  if (isAutoRepeat) return state
+  return { held: state.held, taps: state.taps + 1 }
 }
 
 function releaseKey(state, key, scanCode) {
-  var samePhysicalKey = scanCode && scanCode === state.shiftScanCode
-  if (key === KEY_SHIFT || samePhysicalKey) return { shiftHeld: false, shiftScanCode: 0, taps: state.taps }
-  return state
+  var id = physicalKey(key, scanCode)
+  if (!(id in state.held)) return state
+  return { held: withHeld(state.held, id, ""), taps: state.taps }
+}
+
+// When the panel loses the keyboard, releases go elsewhere; let go of everything.
+function releaseAll(state) {
+  return { held: {}, taps: state.taps }
+}
+
+function isHeld(state, name) {
+  for (var k in state.held) if (state.held[k] === name) return true
+  return false
 }
 
 // Hyprland's openwindow event data is "address,workspace,class,title"; the title may contain commas.
@@ -51,10 +82,14 @@ if (typeof module !== "undefined") {
     KEY_CONTROL: KEY_CONTROL,
     KEY_ALT: KEY_ALT,
     KEY_SUPER_L: KEY_SUPER_L,
+    KEY_META: KEY_META,
+    holdName: holdName,
     isHoldKey: isHoldKey,
     initialKeyState: initialKeyState,
     pressKey: pressKey,
     releaseKey: releaseKey,
+    releaseAll: releaseAll,
+    isHeld: isHeld,
     parseOpenWindow: parseOpenWindow,
     appLabel: appLabel
   }

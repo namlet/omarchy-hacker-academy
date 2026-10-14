@@ -1,6 +1,7 @@
 import QtQuick
 import QtTest
 import "../components"
+import "../Model.js" as Model
 
 Item {
   width: 300
@@ -11,12 +12,16 @@ Item {
     anchors.fill: parent
   }
 
+  Item {
+    id: elsewhere
+  }
+
   TestCase {
     name: "KeyTrainer"
     when: windowShown
 
     function init() {
-      trainer.keyState = { shiftHeld: false, shiftScanCode: 0, taps: 0 }
+      trainer.keyState = Model.initialKeyState()
       trainer.forceActiveFocus()
     }
 
@@ -54,6 +59,13 @@ Item {
       keyClick(Qt.Key_Escape)
       compare(exitSpy.count, 1)
       compare(trainer.taps, 0)
+    }
+
+    function test_losing_focus_lets_go_of_shift() {
+      keyPress(Qt.Key_Shift)
+      verify(trainer.shiftHeld)
+      elsewhere.forceActiveFocus()
+      verify(!trainer.shiftHeld)
     }
 
     function test_hold_keys_are_not_taps() {

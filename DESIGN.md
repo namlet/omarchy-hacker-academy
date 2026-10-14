@@ -42,6 +42,14 @@ A third-party Omarchy shell plugin: QML for Quickshell, with logic in QML's buil
 
 Considered and rejected: a web app with a local event helper (two moving parts, not a plugin, no theming) and a Python/GTK app (doesn't fit Omarchy's plugin model).
 
+## Keyboard input
+
+Learners have every kind of keyboard and layout, so key names can't be trusted for releases: layouts and options remap them, and Omarchy's default `shift:both_capslock_cancel` reports Shift's release as Caps Lock. Rules:
+
+- Pair every press with its release by **physical key** (scan code), never by key name. All hold keys (Shift, Ctrl, Alt, Super) are tracked this way.
+- When the Academy loses the keyboard, let go of every held key — the releases go to another window.
+- Bugs from real keyboards get a test that replays the captured events.
+
 ## Testing
 
 Quickshell's modules are compiled into the `quickshell` binary, and the shell's own `qs.*` modules (theme colors, UI pieces) only exist inside the running shell, so neither loads under Qt's test runner or linter. Tests are split by what each tool can reach:

@@ -16,7 +16,7 @@ FocusScope {
   signal exitRequested()
 
   property var keyState: Model.initialKeyState()
-  readonly property bool shiftHeld: keyState.shiftHeld
+  readonly property bool shiftHeld: Model.isHeld(keyState, "shift")
   readonly property int taps: keyState.taps
 
   implicitWidth: column.implicitWidth
@@ -32,6 +32,8 @@ FocusScope {
   Keys.onReleased: (event) => {
     if (!event.isAutoRepeat) root.keyState = Model.releaseKey(root.keyState, event.key, event.nativeScanCode)
   }
+  // Releases of keys held when focus leaves go to another window, so let go now.
+  onActiveFocusChanged: if (!activeFocus) root.keyState = Model.releaseAll(root.keyState)
 
   ColumnLayout {
     id: column
