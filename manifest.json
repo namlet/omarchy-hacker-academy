@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.namlet.hacker-academy",
+  "name": "Hacker Academy",
+  "version": "0.0.1",
+  "author": "Nathan Loyer",
+  "description": "Learn to drive Omarchy by training as a white-hat hacker. Made for kids who have only used tablets, and for new users of any age.",
+  "kinds": ["panel"],
+  "entryPoints": {
+    "panel": "Panel.qml"
+  }
+}
