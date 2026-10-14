@@ -1,0 +1,25 @@
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: make test (Arch Linux)
+    runs-on: ubuntu-latest
+    # Same Qt and Node packages Omarchy users get.
+    container: archlinux:latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Node and Qt
+        run: pacman -Syu --noconfirm --needed nodejs qt6-declarative make
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run tests and lint
+        run: make test
