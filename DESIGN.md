@@ -44,13 +44,13 @@ Considered and rejected: a web app with a local event helper (two moving parts, 
 
 ## Testing
 
-Quickshell's modules are compiled into the `quickshell` binary and cannot load under Qt's test runner, so tests are split by what each tool can reach:
+Quickshell's modules are compiled into the `quickshell` binary, and the shell's own `qs.*` modules (theme colors, UI pieces) only exist inside the running shell, so neither loads under Qt's test runner or linter. Tests are split by what each tool can reach:
 
 - **Logic** — lesson steps, hints, progress, key classification, reading Hyprland events — lives in plain `.js` model files carrying Omarchy's `if (typeof module !== "undefined") module.exports = {...}` guard, tested with Node's built-in runner. Events are fed in as plain `{ name, data }` objects.
-- **UI and keyboard behaviour** in QML that doesn't import Quickshell is tested headless with `qmltestrunner` (simulated key holds and taps work), and all QML is linted with `qmllint`.
-- **Quickshell wiring** stays in a few thin files with no logic, checked by hand on a real Omarchy desktop.
+- **UI and keyboard behaviour** in QML that doesn't import Quickshell or `qs.*` lives in `components/`, takes theme values as properties, is tested headless with `qmltestrunner` (simulated key holds and taps work), and is linted strictly with `qmllint`.
+- **Quickshell wiring** (`Panel.qml`) stays thin with no logic, and is checked by hand on a real Omarchy desktop: it can't be linted or tested outside the shell.
 
-Rule: anything testable must not import Quickshell. `make test` runs everything; CI runs it on every pull request.
+Rule: anything testable must not import Quickshell or `qs.*`. `make test` runs everything; CI runs it on every pull request in an Arch Linux container.
 
 ## Roadmap
 
