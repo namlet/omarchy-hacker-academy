@@ -48,6 +48,7 @@ Learners have every kind of keyboard and layout, so key names can't be trusted f
 
 - Pair every press with its release by **physical key** (scan code), never by key name. All hold keys (Shift, Ctrl, Alt, Super) are tracked this way.
 - When the Academy loses the keyboard, let go of every held key — the releases go to another window.
+- Omarchy gives the keyboard to whatever is under the mouse. During keyboard exercises the Academy holds the keyboard (exclusive focus) so a drifting pointer can't take it; during desktop exercises it lets go so real windows get keys.
 - Bugs from real keyboards get a test that replays the captured events.
 
 ## Testing

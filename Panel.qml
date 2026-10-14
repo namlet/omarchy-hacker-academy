@@ -17,6 +17,11 @@ Item {
 
   property bool opened: false
   property string lastWindow: ""
+  // Keyboard exercises hold the keyboard so a wandering pointer (Omarchy
+  // focuses whatever is under the mouse) can't take it away; desktop
+  // exercises will let go so real windows get keys. The skeleton is all
+  // keyboard practice.
+  property bool holdKeyboard: true
 
   function open(payloadJson) {
     root.opened = true
@@ -57,8 +62,7 @@ Item {
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "hacker-academy"
     WlrLayershell.layer: WlrLayer.Top
-    // On demand: the coach takes keys when clicked, and real windows keep working.
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+    WlrLayershell.keyboardFocus: root.holdKeyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
 
     Rectangle {
       id: card
