@@ -9,7 +9,7 @@ Phases are sequential gates, not a schedule. Each has an exit criterion; we don'
 - [x] Vision captured ([vision.md](vision.md))
 - [x] Stack ADR accepted ([ADR-0001](decisions/0001-plugin-stack.md), accepted 2026-10-14)
 - [x] Repo pushed to a remote — GitHub ([namlet/omarchy-hacker-academy](https://github.com/namlet/omarchy-hacker-academy), public)
-- [ ] Test strategy ADR: runner, what is tested, CI
+- [ ] Test strategy ADR: runner, what is tested, CI — [ADR-0002](decisions/0002-test-strategy.md) proposed 2026-10-14, awaiting acceptance
 
 **Exit:** test strategy ADR accepted.
 
