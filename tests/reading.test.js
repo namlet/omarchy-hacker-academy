@@ -15,6 +15,7 @@ function bubbles() {
     for (const step of mission.steps) {
       out.push(step.lines.join(" "))
       out.push(step.hint.bolt, step.hint.demo, step.success.line)
+      if (step.loud) out.push(step.loud, step.quiet)
       if (step.expect.label) out.push(step.expect.label)
     }
   }

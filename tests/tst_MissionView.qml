@@ -180,6 +180,9 @@ Item {
       compare([view.session.mission, view.session.step], [1, 0])
       view.progress = { version: 1, codename: "Zero", completed: [0, 1], current: null }
       view.begin()
+      compare([view.session.mission, view.session.step], [2, 0])
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2], current: null }
+      view.begin()
       verify(view.finishedAll)
       verify(findChild(view, "comingSoon").visible)
     }
@@ -280,6 +283,72 @@ Item {
       verify(!findChild(view, "playground").highlight)
       view.tick(Engine.HINT_DELAYS_MS[1])
       verify(findChild(view, "playground").highlight)
+    }
+
+    // ------------------------------------------------------------ mission 2
+
+    function startMissionTwo(step) {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1], current: null }
+      view.begin()
+      if (step) view.session = Object.assign({}, view.session, { step: step })
+      view.focusTask()
+      wait(30)
+    }
+
+    function test_mission_two_tap_five_letters() {
+      startMissionTwo(0)
+      tryCompare(findChild(view, "keyboard"), "opacity", 1, 1000)
+      keyClick(Qt.Key_Shift)
+      for (const k of [Qt.Key_H, Qt.Key_A, Qt.Key_C, Qt.Key_K]) keyClick(k)
+      verify(!view.celebrating)
+      compare(findChild(view, "tally").text, "4 of 5")
+      keyClick(Qt.Key_S)
+      verify(view.celebrating)
+      compare(findChild(view, "typed").text, "h a c k s")
+    }
+
+    function test_mission_two_hold_shift_three_seconds() {
+      startMissionTwo(1)
+      keyPress(Qt.Key_Shift)
+      wait(1000)
+      verify(findChild(view, "shieldFill").width > 0, "the force field grows while held")
+      keyRelease(Qt.Key_Shift)
+      wait(20)
+      verify(!view.celebrating)
+      verify(view.letGoEarly, "letting go early says keep holding")
+      keyPress(Qt.Key_Shift)
+      tryVerify(function() { return view.celebrating }, 4000)
+      keyRelease(Qt.Key_Shift)
+    }
+
+    function test_mission_two_capital_letter_with_shift() {
+      startMissionTwo(2)
+      keyClick(Qt.Key_Q)
+      verify(!view.celebrating, "no Shift, no capital")
+      keyPress(Qt.Key_Shift)
+      keyClick(Qt.Key_Q, Qt.ShiftModifier)
+      keyRelease(Qt.Key_Shift)
+      verify(view.celebrating)
+      compare(findChild(view, "typed").text, "Q")
+    }
+
+    function test_mission_two_a_quick_shift_tap_stops_the_shouting() {
+      startMissionTwo(3)
+      compare(findChild(view, "loud").text, "AAAH! EVERYTHING IS LOUD!")
+      keyPress(Qt.Key_Shift)
+      wait(800)
+      keyRelease(Qt.Key_Shift)
+      verify(!view.celebrating, "a long press is a hold, not a tap")
+      keyClick(Qt.Key_Shift)
+      verify(view.celebrating)
+      compare(findChild(view, "loud").text, "Ahh. Everything is quiet now.")
+    }
+
+    function test_mission_two_esc_stops_the_alarm_without_closing() {
+      startMissionTwo(4)
+      keyClick(Qt.Key_Escape)
+      verify(view.celebrating)
+      compare(exited.count, 0)
     }
 
     function test_settings_skip_and_reset() {

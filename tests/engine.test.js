@@ -148,6 +148,49 @@ test("hits reset when the next step starts", () => {
   assert.deepEqual([s.step, s.hits, s.count], [1, [], 0])
 })
 
+test("anykey counts letter and digit taps, ignoring other keys, and keeps what was typed", () => {
+  const missions = [{ steps: [{ expect: { type: "anykey", times: 3 } }] }]
+  let s = Engine.startMission(0)
+  s = Engine.handle(missions, s, { type: "key", key: "A", text: "a" })
+  s = Engine.handle(missions, s, { type: "key", key: "Shift" })
+  s = Engine.handle(missions, s, { type: "key", key: "Space", text: " " })
+  s = Engine.handle(missions, s, { type: "key", key: "7", text: "7" })
+  assert.deepEqual([s.count, s.typed, s.celebrating], [2, "a7", false])
+  s = Engine.handle(missions, s, { type: "key", key: "B", text: "b" })
+  assert.deepEqual([s.typed, s.celebrating], ["a7b", true])
+})
+
+test("hold needs the right key for long enough", () => {
+  const missions = [{ steps: [{ expect: { type: "hold", key: "Shift", ms: 3000 } }] }]
+  let s = Engine.startMission(0)
+  s = Engine.handle(missions, s, { type: "held", key: "Ctrl", ms: 5000 })
+  s = Engine.handle(missions, s, { type: "held", key: "Shift", ms: 2900 })
+  assert.equal(s.celebrating, false)
+  s = Engine.handle(missions, s, { type: "held", key: "Shift", ms: 3000 })
+  assert.equal(s.celebrating, true)
+})
+
+test("a capital needs a letter typed while Shift is held", () => {
+  const missions = [{ steps: [{ expect: { type: "capital" } }] }]
+  let s = Engine.startMission(0)
+  s = Engine.handle(missions, s, { type: "key", key: "A", text: "a", shift: false })
+  s = Engine.handle(missions, s, { type: "key", key: "7", text: "&", shift: true })
+  assert.equal(s.celebrating, false)
+  s = Engine.handle(missions, s, { type: "key", key: "Q", text: "Q", shift: true })
+  assert.deepEqual([s.celebrating, s.typed], [true, "Q"])
+})
+
+test("a tap step needs a tap of that key, not a hold or a press", () => {
+  const missions = [{ steps: [{ expect: { type: "tap", key: "Shift" } }] }]
+  let s = Engine.startMission(0)
+  s = Engine.handle(missions, s, { type: "key", key: "Shift" })
+  s = Engine.handle(missions, s, { type: "held", key: "Shift", ms: 5000 })
+  s = Engine.handle(missions, s, { type: "tap", key: "Ctrl" })
+  assert.equal(s.celebrating, false)
+  s = Engine.handle(missions, s, { type: "tap", key: "Shift" })
+  assert.equal(s.celebrating, true)
+})
+
 // ---------------------------------------------------------------- help
 
 test("help grows with idle time: hint, keys, demo", () => {
@@ -193,7 +236,7 @@ test("every step has a speaker, 1-2 lines, a known expectation, and full help", 
     for (const step of mission.steps) {
       assert.ok(["mentor", "bolt"].includes(step.speaker))
       assert.ok(step.lines.length >= 1 && step.lines.length <= 2)
-      assert.ok(["button", "key", "codename", "pointer"].includes(step.expect.type))
+      assert.ok(["button", "key", "codename", "pointer", "anykey", "hold", "capital", "tap"].includes(step.expect.type))
       assert.ok(step.hint.bolt && step.hint.demo && Array.isArray(step.hint.keys))
       assert.ok(["mentor", "bolt"].includes(step.success.speaker) && step.success.line)
     }

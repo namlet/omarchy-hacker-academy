@@ -35,6 +35,13 @@ FocusScope {
   property var keys: Model.initialPressedState()
   property bool showingSettings: false
   property bool confirmingReset: false
+  // Shift as a hold key: when it went down, whether anything else was pressed
+  // meanwhile (so a lone quick press is a tap), and how long it has been held.
+  property double shiftDownAt: 0
+  property bool shiftAlone: false
+  property real shiftHeldMs: 0
+  property bool letGoEarly: false
+  readonly property int tapMaxMs: 600
 
   readonly property bool finishedAll: root.session.mission >= root.missions.length
   readonly property var mission: root.finishedAll ? null : root.missions[root.session.mission]
@@ -44,10 +51,11 @@ FocusScope {
   readonly property string codename: root.session.codename || root.progress.codename
   readonly property bool celebrating: root.session.celebrating === true
   readonly property string expectType: root.step ? root.step.expect.type : ""
+  readonly property bool keyTask: ["key", "codename", "anykey", "hold", "capital", "tap"].indexOf(root.expectType) !== -1
+  readonly property bool shiftHeld: Model.pressedLabels(root.keys).indexOf("Shift") !== -1
   // The keyboard picture only shows when keys are the task, or a hint lights one.
   readonly property bool keyboardShown: root.step !== null && !root.showingSettings
-    && (root.expectType === "key" || root.expectType === "codename"
-        || (root.session.hint >= 2 && root.step.hint.keys.length > 0))
+    && (root.keyTask || (root.session.hint >= 2 && root.step.hint.keys.length > 0))
 
   readonly property real unit: root.fontSize * 2.4
   readonly property real pad: root.fontSize * 1.5
@@ -97,8 +105,28 @@ FocusScope {
     })
   }
 
-  function trackDown(event) { root.keys = Model.keyDown(root.keys, event.key, event.nativeScanCode) }
-  function trackUp(event) { root.keys = Model.keyUp(root.keys, event.key, event.nativeScanCode) }
+  function trackDown(event) {
+    root.keys = Model.keyDown(root.keys, event.key, event.nativeScanCode)
+    if (Model.keyLabel(event.key) === "Shift") {
+      if (root.shiftDownAt === 0) { root.shiftDownAt = Date.now(); root.shiftAlone = true; root.letGoEarly = false }
+    } else {
+      root.shiftAlone = false
+    }
+  }
+
+  function trackUp(event) {
+    root.keys = Model.keyUp(root.keys, event.key, event.nativeScanCode)
+    if (root.shiftDownAt !== 0 && !root.shiftHeld) shiftReleased()
+  }
+
+  function shiftReleased() {
+    const ms = Date.now() - root.shiftDownAt
+    const tapped = root.shiftAlone && ms < root.tapMaxMs
+    root.letGoEarly = root.expectType === "hold" && !root.celebrating && ms >= root.tapMaxMs
+    root.shiftDownAt = 0
+    root.shiftHeldMs = 0
+    if (tapped) root.handle({ type: "tap", key: "Shift" })
+  }
 
   function skipMission() {
     root.progress = Engine.completeMission(root.progress, root.session.mission)
@@ -117,15 +145,30 @@ FocusScope {
   implicitHeight: column.height + root.pad * 2
 
   Keys.onPressed: (event) => {
+    if (event.isAutoRepeat) return
     root.trackDown(event)
-    if (event.key === Qt.Key_Escape) { root.exitRequested(); return }
-    if (!event.isAutoRepeat) {
-      const label = Model.keyLabel(event.key)
-      if (label) root.handle({ type: "key", key: label })
-    }
+    const label = Model.keyLabel(event.key)
+    // Esc closes the Academy, unless pressing Esc is the task.
+    if (label === "Esc" && !(root.expectType === "key" && root.step.expect.key === "Esc")) { root.exitRequested(); return }
+    if (label) root.handle({ type: "key", key: label, text: event.text, shift: root.shiftHeld })
   }
   Keys.onReleased: (event) => { if (!event.isAutoRepeat) root.trackUp(event) }
-  onActiveFocusChanged: if (!root.activeFocus && !codenameInput.activeFocus) root.keys = Model.initialPressedState()
+  onActiveFocusChanged: if (!root.activeFocus && !codenameInput.activeFocus) {
+    root.keys = Model.initialPressedState()
+    root.shiftDownAt = 0
+    root.shiftHeldMs = 0
+  }
+
+  // While Shift is down, report how long, for hold steps and the force-field bar.
+  Timer {
+    interval: 50
+    repeat: true
+    running: root.shiftDownAt !== 0
+    onTriggered: {
+      root.shiftHeldMs = Date.now() - root.shiftDownAt
+      if (root.expectType === "hold") root.handle({ type: "held", key: "Shift", ms: root.shiftHeldMs })
+    }
+  }
 
   Timer {
     interval: 1000
@@ -284,30 +327,103 @@ FocusScope {
         }
       }
 
-      // Pointer steps: what to do, and how many targets are caught so far.
+      // Labelled tasks: what to do, a tally, and what the step shows (typed letters,
+      // the force-field bar, or Bolt's shouting and alarm).
       Column {
-        visible: root.expectType === "pointer"
+        visible: root.expectType !== "button" && root.step !== null && root.step.expect.label !== undefined
         anchors.centerIn: parent
         spacing: root.fontSize / 3
 
-        Text {
-          objectName: "instruction"
+        Row {
           anchors.horizontalCenter: parent.horizontalCenter
-          text: root.expectType === "pointer" ? root.step.expect.label : ""
-          color: root.accentColor
-          font.family: root.fontFamily
-          font.pixelSize: root.fontSize * 1.3
-          font.bold: true
+          spacing: root.fontSize
+
+          Text {
+            objectName: "instruction"
+            text: root.step && root.step.expect.label ? root.step.expect.label : ""
+            color: root.accentColor
+            font.family: root.fontFamily
+            font.pixelSize: root.fontSize * 1.2
+            font.bold: true
+          }
+
+          Text {
+            objectName: "tally"
+            visible: (root.expectType === "pointer" && root.step.expect.ids.length > 1) || root.expectType === "anykey"
+            text: root.expectType === "pointer" ? root.session.hits.length + " of " + root.step.expect.ids.length
+              : root.expectType === "anykey" ? root.session.count + " of " + root.step.expect.times : ""
+            color: root.dimColor
+            font.family: root.fontFamily
+            font.pixelSize: root.fontSize
+            anchors.verticalCenter: parent.verticalCenter
+          }
         }
 
         Text {
-          objectName: "tally"
+          objectName: "typed"
+          visible: root.step !== null && root.step.display === "typed"
           anchors.horizontalCenter: parent.horizontalCenter
-          visible: root.expectType === "pointer" && root.step.expect.ids.length > 1
-          text: root.expectType === "pointer" ? root.session.hits.length + " of " + root.step.expect.ids.length : ""
-          color: root.dimColor
+          text: (root.session.typed || "").split("").join(" ")
+          color: root.celebrating ? root.accentColor : root.boltColor
           font.family: root.fontFamily
-          font.pixelSize: root.fontSize
+          font.pixelSize: root.fontSize * 2.2
+          font.bold: true
+        }
+
+        Item {
+          objectName: "shield"
+          visible: root.step !== null && root.step.display === "shield"
+          anchors.horizontalCenter: parent.horizontalCenter
+          width: root.fontSize * 20
+          height: root.fontSize * 2
+
+          Rectangle {
+            anchors.fill: parent
+            radius: height / 2
+            color: "transparent"
+            border.color: root.accentColor
+            border.width: 2
+          }
+
+          Rectangle {
+            objectName: "shieldFill"
+            height: parent.height
+            radius: height / 2
+            color: root.accentColor
+            opacity: 0.8
+            width: root.celebrating ? parent.width
+              : root.expectType === "hold" ? parent.width * Math.min(1, root.shiftHeldMs / root.step.expect.ms) : 0
+          }
+
+          Text {
+            anchors.centerIn: parent
+            visible: root.letGoEarly && !root.celebrating
+            text: Missions.UI.keepHolding
+            color: root.textColor
+            font.family: root.fontFamily
+            font.pixelSize: root.fontSize
+            font.bold: true
+          }
+        }
+
+        Text {
+          id: loudText
+          objectName: "loud"
+          visible: root.step !== null && root.step.display === "loud"
+          anchors.horizontalCenter: parent.horizontalCenter
+          text: root.step && root.step.loud ? (root.celebrating ? root.step.quiet : root.step.loud) : ""
+          color: root.celebrating ? root.textColor : root.accentColor
+          font.family: root.fontFamily
+          font.pixelSize: root.fontSize * 1.8
+          font.bold: !root.celebrating
+
+          SequentialAnimation on opacity {
+            running: !root.celebrating && root.step !== null && root.step.display === "loud"
+            loops: Animation.Infinite
+            onStopped: loudText.opacity = 1
+            NumberAnimation { to: 0.3; duration: 250 }
+            NumberAnimation { to: 1; duration: 250 }
+          }
         }
       }
 

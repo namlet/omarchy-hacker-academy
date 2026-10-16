@@ -138,6 +138,89 @@ var MISSIONS = [
         }
       }
     ]
+  },
+  {
+    id: "force-fields",
+    title: "Force Fields",
+    stage: "center",
+    holdKeyboard: true,
+    steps: [
+      {
+        speaker: "mentor",
+        lines: ["Some keys you tap. Tap means press and let go fast."],
+        display: "typed",
+        expect: { type: "anykey", times: 5, label: "Tap any five letter keys." },
+        success: { speaker: "bolt", line: "Tap, tap, tap! You are fast." },
+        hint: {
+          bolt: "Press a letter key and let go. Do it five times.",
+          keys: [],
+          demo: "Tap A, then B, then C. Any letters work!"
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Shift is a hold key. It works like a force field."],
+        display: "shield",
+        expect: { type: "hold", key: "Shift", ms: 3000, label: "Hold Shift down for three seconds." },
+        success: { speaker: "mentor", line: "Force field up! Hold keys work while you hold them." },
+        hint: {
+          bolt: "Press Shift and keep your finger on it.",
+          keys: ["Shift"],
+          demo: "Shift is on the left side. Hold it until the bar is full."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Hold Shift, then tap a letter.", "You get a big letter!"],
+        display: "typed",
+        expect: { type: "capital", label: "Make a big letter with Shift." },
+        success: { speaker: "bolt", line: "Whoa, a capital letter!" },
+        hint: {
+          bolt: "Keep holding Shift. While it is down, tap a letter.",
+          keys: ["Shift"],
+          demo: "Hold Shift with one finger. Tap a letter with another."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["HELP! I CAN'T STOP SHOUTING!"],
+        display: "loud",
+        loud: "AAAH! EVERYTHING IS LOUD!",
+        quiet: "Ahh. Everything is quiet now.",
+        expect: { type: "tap", key: "Shift", label: "Tap Shift once to stop the shouting." },
+        success: { speaker: "bolt", line: "Phew. That is much better." },
+        hint: {
+          bolt: "TAP SHIFT. JUST ONE QUICK TAP!",
+          keys: ["Shift"],
+          demo: "Both Shift keys at once turn shouting on. One quick tap turns it off."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["Oops, I set off the alarm!", "Esc is the abort button."],
+        display: "loud",
+        loud: "ALARM! ALARM!",
+        quiet: "All quiet.",
+        expect: { type: "key", key: "Esc", label: "Tap Esc to stop the alarm." },
+        success: { speaker: "mentor", line: "Alarm stopped. Esc means never mind." },
+        hint: {
+          bolt: "Esc is in the top left corner. Tap it!",
+          keys: ["Esc"],
+          demo: "Find Esc at the top left of the keyboard. Tap it once."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["You know tap keys and hold keys now.", "Next, you get the master key!"],
+        expect: { type: "button", id: "finish", label: "Finish mission", key: "Enter" },
+        success: { speaker: "bolt", line: "Woohoo! Mission complete, {codename}!" },
+        hint: {
+          bolt: "Tap Enter to finish!",
+          keys: ["Enter"],
+          demo: "Find Enter on the right side of the keyboard. Tap it once."
+        }
+      }
+    ]
   }
 ]
 
@@ -146,6 +229,7 @@ var UI = {
   comingSoon: "Your next mission is coming soon. Great work so far!",
   orEnter: "Tap Enter or click the button.",
   keepScrolling: "Keep scrolling down.",
+  keepHolding: "Keep holding Shift!",
   codenamePrompt: "Your hacker name",
   close: "Tap Esc or click here to close.",
   settings: "Settings"
