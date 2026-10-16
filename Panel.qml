@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
@@ -50,6 +51,15 @@ Item {
     onSaveFailed: (error) => console.warn("Hacker Academy: could not save progress to " + root.progressPath + " (error " + error + ")")
   }
 
+  // Windows opening and closing on the real desktop, for missions played there.
+  Connections {
+    target: Hyprland
+    enabled: root.opened
+    function onRawEvent(event) {
+      if (event) view.windowEvent({ name: String(event.name), data: String(event.data) })
+    }
+  }
+
   PanelWindow {
     visible: root.opened
     // Centered for missions inside the panel; a corner when the real desktop is the stage.
@@ -61,7 +71,8 @@ Item {
     implicitWidth: card.implicitWidth
     implicitHeight: card.implicitHeight
     color: "transparent"
-    exclusionMode: ExclusionMode.Ignore
+    // Stay clear of the bar when sitting in a corner.
+    exclusionMode: ExclusionMode.Normal
     WlrLayershell.namespace: "hacker-academy"
     WlrLayershell.layer: WlrLayer.Top
     // Keyboard missions hold the keyboard so a drifting pointer can't take it

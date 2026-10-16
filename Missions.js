@@ -4,6 +4,10 @@
 // A step: who speaks, one or two lines, what the learner must do (expect), a short
 // success line shown before moving on, and the help that grows while they're stuck:
 // Bolt's hint, keys lit on the keyboard, then the Mentor's demo.
+//
+// From mission 3 the real desktop is the stage: the Academy waits in a corner, lets
+// go of the keyboard, and watches windows open and close. Omarchy's shortcuts never
+// reach the Academy, so those steps show their keys (combo) instead of a keyboard.
 
 var MISSIONS = [
   {
@@ -218,6 +222,85 @@ var MISSIONS = [
           bolt: "Tap Enter to finish!",
           keys: ["Enter"],
           demo: "Find Enter on the right side of the keyboard. Tap it once."
+        }
+      }
+    ]
+  },
+  {
+    id: "master-key",
+    title: "The Master Key",
+    stage: "corner",
+    holdKeyboard: false,
+    steps: [
+      {
+        speaker: "mentor",
+        lines: ["Hackers have a master key.", "On your keyboard, it says Win."],
+        expect: { type: "button", id: "ready", label: "Show me", key: "Enter" },
+        success: { speaker: "bolt", line: "A master key? Can I hold it?" },
+        hint: {
+          bolt: "Click the button to start!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Hold Win, tap Enter, then let go.", "That opens a terminal."],
+        combo: ["Win", "Enter"],
+        expect: { type: "window", action: "open", app: "terminal", label: "Open a terminal." },
+        success: { speaker: "mentor", line: "A terminal! Hackers type commands in there." },
+        hint: {
+          bolt: "Keep Win down while you tap Enter.",
+          keys: ["Win", "Enter"],
+          demo: "Win is at the bottom left. Hold it, tap Enter, then let go."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["Oops, that window is in my way!", "Win and W closes a window."],
+        combo: ["Win", "W"],
+        expect: { type: "window", action: "close", label: "Close the terminal." },
+        success: { speaker: "bolt", line: "Poof! It's gone." },
+        hint: {
+          bolt: "Hold Win, then tap W.",
+          keys: ["Win", "W"],
+          demo: "Click the terminal first. Then hold Win and tap W."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["I want to watch robot videos!", "Win, Shift, and B open the web browser."],
+        combo: ["Win", "Shift", "B"],
+        expect: { type: "window", action: "open", app: "browser", label: "Open the browser." },
+        success: { speaker: "mentor", line: "Two hold keys at once. Very smooth." },
+        hint: {
+          bolt: "Hold Win and Shift. Then tap B.",
+          keys: ["Win", "Shift", "B"],
+          demo: "Hold Win with one finger and Shift with another. Then tap B."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Videos later, Bolt.", "Close the browser too."],
+        combo: ["Win", "W"],
+        expect: { type: "window", action: "close", label: "Close the browser." },
+        success: { speaker: "bolt", line: "Aww. Okay, fine." },
+        hint: {
+          bolt: "Same trick as before. Win and W!",
+          keys: ["Win", "W"],
+          demo: "Click the browser first. Then hold Win and tap W."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["You hold the master key now.", "You are an Agent, {codename}."],
+        badge: "Agent",
+        expect: { type: "button", id: "finish", label: "Finish mission", key: "Enter" },
+        success: { speaker: "bolt", line: "Agent {codename}! That sounds so cool." },
+        hint: {
+          bolt: "Click the button. You know how!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
         }
       }
     ]

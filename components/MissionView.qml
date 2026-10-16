@@ -8,7 +8,7 @@ import "../Model.js" as Model
 // Plays missions: the speaker and lines, the task, a short success moment after each
 // step, help that grows while the learner is stuck, the on-screen keyboard, and a
 // settings screen for grown-ups. No Quickshell imports; the panel passes in theme
-// values and saves progress.
+// values, saves progress, and forwards Hyprland's window events.
 //
 // The size is fixed and every area keeps its space, so nothing jumps when hints
 // or the keyboard appear.
@@ -48,6 +48,8 @@ FocusScope {
   readonly property var step: root.finishedAll ? null : Engine.currentStep(root.missions, root.session)
   readonly property string stage: root.mission ? root.mission.stage : "center"
   readonly property bool holdKeyboard: root.mission ? root.mission.holdKeyboard : true
+  // Desktop missions sit small in a corner, out of the way of the real windows.
+  readonly property bool onDesktop: root.stage === "corner"
   readonly property string codename: root.session.codename || root.progress.codename
   readonly property bool celebrating: root.session.celebrating === true
   readonly property string expectType: root.step ? root.step.expect.type : ""
@@ -72,6 +74,12 @@ FocusScope {
   function handle(event) {
     root.session = Engine.handle(root.missions, root.session, event)
     root.focusTask()
+  }
+
+  // A raw Hyprland event ({name, data}); windows opening and closing can finish a step.
+  function windowEvent(event) {
+    const w = Model.windowEvent(event)
+    if (w) root.handle({ type: "window", action: w.action, app: w.app })
   }
 
   // Called after the success moment; finishing the last step completes the mission.
@@ -141,7 +149,7 @@ FocusScope {
     root.begin()
   }
 
-  implicitWidth: keyboard.implicitWidth + root.pad * 2
+  implicitWidth: column.width + root.pad * 2
   implicitHeight: column.height + root.pad * 2
 
   Keys.onPressed: (event) => {
@@ -187,7 +195,7 @@ FocusScope {
     id: column
     x: root.pad
     y: root.pad
-    width: keyboard.implicitWidth
+    width: root.onDesktop ? root.fontSize * 30 : keyboard.implicitWidth
     spacing: root.fontSize
 
     // Header: mission title, the learner's name, settings. Plain, so only the task glows.
@@ -356,6 +364,56 @@ FocusScope {
             font.family: root.fontFamily
             font.pixelSize: root.fontSize
             anchors.verticalCenter: parent.verticalCenter
+          }
+        }
+
+        // The shortcut to press, since Omarchy's shortcuts never reach the Academy's keyboard.
+        Row {
+          objectName: "combo"
+          visible: root.step !== null && root.step.combo !== undefined
+          anchors.horizontalCenter: parent.horizontalCenter
+          spacing: root.fontSize / 2
+
+          Repeater {
+            model: root.step && root.step.combo ? root.step.combo : []
+
+            Row {
+              id: comboKey
+              required property string modelData
+              required property int index
+              spacing: root.fontSize / 2
+
+              Text {
+                visible: comboKey.index > 0
+                anchors.verticalCenter: parent.verticalCenter
+                text: "+"
+                color: root.dimColor
+                font.family: root.fontFamily
+                font.pixelSize: root.fontSize * 1.2
+              }
+
+              Rectangle {
+                id: comboCap
+                objectName: "combo-" + comboKey.modelData
+                property bool lit: root.celebrating || root.session.hint >= 2
+                width: Math.max(comboLabel.implicitWidth + root.fontSize, root.fontSize * 2.4)
+                height: root.fontSize * 2.2
+                radius: root.fontSize / 3
+                color: comboCap.lit ? root.accentColor : "transparent"
+                border.color: root.accentColor
+                border.width: 2
+
+                Text {
+                  id: comboLabel
+                  anchors.centerIn: parent
+                  text: comboKey.modelData
+                  color: comboCap.lit ? root.backgroundColor : root.textColor
+                  font.family: root.fontFamily
+                  font.pixelSize: root.fontSize
+                  font.bold: true
+                }
+              }
+            }
           }
         }
 
@@ -587,7 +645,9 @@ FocusScope {
     }
 
     // The keyboard keeps its space even when hidden; pointer steps play in the same space.
+    // Desktop missions have neither.
     Item {
+      visible: !root.onDesktop
       width: keyboard.implicitWidth
       height: keyboard.implicitHeight
 
