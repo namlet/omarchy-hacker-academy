@@ -248,8 +248,31 @@ Item {
       dragTo(bug, 10, bug.y + bug.height / 2)
       verify(!view.celebrating, "dropping on the floor doesn't count")
       compare(bug.x, homeX, "a missed drop goes back home")
-      dragTo(bug, jar.x + jar.width / 2, jar.y + jar.height / 2)
+      // Drop near the jar's edge: the bug still has to end up fully inside.
+      dragTo(bug, jar.x + jar.width - 6, jar.y + jar.height / 2)
       verify(view.celebrating)
+      verify(bug.x >= jar.x && bug.x + bug.width <= jar.x + jar.width, "bug sits inside the jar sideways")
+      verify(bug.y >= jar.y && bug.y + bug.height <= jar.y + jar.height, "bug sits inside the jar up and down")
+    }
+
+    function test_mission_one_bugs_crawl_but_freeze_under_the_arrow() {
+      startMissionOne()
+      view.session = Object.assign({}, view.session, { step: 1 })
+      wait(50)
+      const bug = target("bug2")
+      const x0 = bug.x, y0 = bug.y
+      tryVerify(function() { return Math.abs(bug.x - x0) + Math.abs(bug.y - y0) > 5 }, 5000, "bugs crawl")
+      // Point at the bug while it's resting between moves, like a learner taking aim.
+      let lastX = -1
+      tryVerify(function() { const still = bug.x === lastX; lastX = bug.x; wait(60); return still }, 5000, "bug comes to rest")
+      mouseMove(bug)
+      tryVerify(function() { return bug.hovered }, 1000, "the arrow is on the bug")
+      const x1 = bug.x, y1 = bug.y
+      wait(2500)
+      compare([bug.x, bug.y], [x1, y1], "a bug under the arrow stays put")
+      // Another crawling bug may have wandered on top; clicking catches whichever is on top.
+      mouseClick(bug)
+      compare(view.session.hits.length, 1)
     }
 
     function test_mission_one_scroll_then_click_the_hidden_bug() {
