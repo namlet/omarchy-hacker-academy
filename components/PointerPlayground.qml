@@ -19,6 +19,8 @@ Item {
   property string fontFamily: "monospace"
   property int fontSize: 16
   property string keepScrollingText: "Keep scrolling down."
+  // How long a crawling bug takes to reach its next spot. Slow, for beginners.
+  property int crawlMs: 1800
 
   signal pointerEvent(var event)
 
@@ -118,17 +120,51 @@ Item {
       ? [["bug1", 0.08, 0.15], ["bug2", 0.28, 0.62], ["bug3", 0.47, 0.18], ["bug4", 0.68, 0.6], ["bug5", 0.86, 0.2]]
       : []
 
+    // Escaped bugs crawl to a new spot every few seconds, and freeze while the
+    // arrow is on them so a beginner can still catch them.
     Bug {
       id: clickBug
       required property var modelData
+      required property int index
       bugId: clickBug.modelData[0]
       objectName: "target-" + clickBug.bugId
       visible: !root.caught(clickBug.bugId)
-      x: clickBug.modelData[1] * (root.width - clickBug.width)
-      y: clickBug.modelData[2] * (root.height - clickBug.height) + root.fontSize
+      readonly property bool hovered: bugArea.containsMouse
+
+      function crawl() {
+        if (clickBug.hovered || !clickBug.visible) return
+        const maxX = root.width - clickBug.width, maxY = root.height - clickBug.height
+        crawlAnim.stop()
+        crawlX.to = Math.random() * maxX
+        crawlY.to = root.fontSize + Math.random() * (maxY - root.fontSize)
+        crawlAnim.start()
+      }
+
+      Component.onCompleted: {
+        clickBug.x = clickBug.modelData[1] * (root.width - clickBug.width)
+        clickBug.y = clickBug.modelData[2] * (root.height - clickBug.height) + root.fontSize
+      }
+      onHoveredChanged: if (clickBug.hovered) crawlAnim.stop()
+
+      ParallelAnimation {
+        id: crawlAnim
+        NumberAnimation { id: crawlX; target: clickBug; property: "x"; duration: root.crawlMs; easing.type: Easing.InOutQuad }
+        NumberAnimation { id: crawlY; target: clickBug; property: "y"; duration: root.crawlMs; easing.type: Easing.InOutQuad }
+      }
+
+      Timer {
+        // Each bug keeps its own rhythm so they don't move in step.
+        interval: root.crawlMs + 400 + clickBug.index * 170
+        running: root.play === "bugs" && root.enabled
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: clickBug.crawl()
+      }
 
       MouseArea {
+        id: bugArea
         anchors.fill: parent
+        hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.send("click", clickBug.bugId)
       }
@@ -192,8 +228,14 @@ Item {
       onReleased: {
         const cx = bigBug.x + bigBug.width / 2, cy = bigBug.y + bigBug.height / 2
         const inJar = cx > jar.x && cx < jar.x + jar.width && cy > jar.y && cy < jar.y + jar.height
+        if (inJar) {
+          // Settle neatly inside the jar instead of hanging over its edge.
+          bigBug.x = jar.x + (jar.width - bigBug.width) / 2
+          bigBug.y = jar.y + (jar.height - bigBug.height) / 2
+        } else {
+          bigBug.goHome()
+        }
         root.send("drop", "bigbug", inJar ? "jar" : "floor")
-        if (!inJar) bigBug.goHome()
       }
     }
   }
