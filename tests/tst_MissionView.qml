@@ -32,14 +32,14 @@ Item {
     // Let the screen settle before and after a click, as a person's hand would.
     function clickItem(name) {
       wait(20)
-      var item = findChild(view, name)
+      const item = findChild(view, name)
       verify(item !== null && item.visible, name + " should be visible")
       mouseClick(item)
       wait(20)
     }
 
     function typeText(text) {
-      for (var i = 0; i < text.length; i++) keyClick(text.charAt(i))
+      for (let i = 0; i < text.length; i++) keyClick(text.charAt(i))
     }
 
     function waitForCelebration() {
@@ -87,7 +87,7 @@ Item {
     function test_fixed_name_stays_and_celebrates_before_moving_on() {
       clickItem("button-accept")
       waitForCelebration()
-      for (var i = 0; i < 3; i++) keyClick(Qt.Key_Backspace)
+      for (let i = 0; i < 3; i++) keyClick(Qt.Key_Backspace)
       verify(view.celebrating)
       compare(findChild(view, "field").text, "BOLT")
       verify(findChild(view, "success").visible)
@@ -106,7 +106,7 @@ Item {
     }
 
     function test_window_size_never_changes() {
-      var w = view.implicitWidth, h = view.implicitHeight
+      const w = view.implicitWidth, h = view.implicitHeight
       view.tick(Engine.HINT_DELAYS_MS[2])
       compare([view.implicitWidth, view.implicitHeight], [w, h])
       clickItem("button-accept")

@@ -21,9 +21,5 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Debug qmllint (temporary)
-        run: |
-          /usr/lib/qt6/bin/qmllint --version
-          for f in components/*.qml tests/*.qml; do echo "== $f"; /usr/lib/qt6/bin/qmllint --max-warnings 0 --json - "$f"; echo "exit=$?"; done
       - name: Run tests and lint
         run: make test
