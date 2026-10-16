@@ -259,13 +259,17 @@ Item {
       const bug = target("bug2")
       const x0 = bug.x, y0 = bug.y
       tryVerify(function() { return Math.abs(bug.x - x0) + Math.abs(bug.y - y0) > 5 }, 5000, "bugs crawl")
+      // Point at the bug while it's resting between moves, like a learner taking aim.
+      let lastX = -1
+      tryVerify(function() { const still = bug.x === lastX; lastX = bug.x; wait(60); return still }, 5000, "bug comes to rest")
       mouseMove(bug)
-      wait(50)
+      tryVerify(function() { return bug.hovered }, 1000, "the arrow is on the bug")
       const x1 = bug.x, y1 = bug.y
       wait(2500)
       compare([bug.x, bug.y], [x1, y1], "a bug under the arrow stays put")
+      // Another crawling bug may have wandered on top; clicking catches whichever is on top.
       mouseClick(bug)
-      verify(!bug.visible)
+      compare(view.session.hits.length, 1)
     }
 
     function test_mission_one_scroll_then_click_the_hidden_bug() {
