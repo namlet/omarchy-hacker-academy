@@ -4,7 +4,7 @@ An Omarchy shell plugin that teaches new users — starting with kids who have o
 
 The learner trains as a white-hat hacker recruit. Lessons ask them to do real things on the real desktop, and the Academy notices when they do. See [DESIGN.md](DESIGN.md) for the plan.
 
-> **Status: early skeleton.** It opens a small coach panel that lights up while Shift is held, counts tapped keys, and notices when a window opens. No lessons yet.
+> **Status: early.** Mission 0 (Recruitment) is playable. Missions 1–9 are coming.
 
 ## Install
 
@@ -14,11 +14,22 @@ omarchy plugin add https://github.com/namlet/omarchy-hacker-academy --enable
 
 ## Open
 
+Click the robot button in the top bar. Or from a terminal:
+
 ```bash
-omarchy-shell shell summon io.github.namlet.hacker-academy
+omarchy-shell shell toggle io.github.namlet.hacker-academy
 ```
 
-Click the panel to give it the keyboard. Press Esc, or click "close", to dismiss it.
+Press Esc, or click "close", to dismiss it. Progress is saved to `~/.local/state/io.github.namlet.hacker-academy.json` and picks up where the learner left off. **Settings** in the panel lets a grown-up skip a mission or reset progress.
+
+## Update
+
+```bash
+omarchy plugin update io.github.namlet.hacker-academy
+omarchy restart shell
+```
+
+Restart the shell after updating: it keeps a cached list of each plugin's files, so files added by an update aren't found until it restarts.
 
 ## Remove
 

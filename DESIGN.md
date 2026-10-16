@@ -51,7 +51,8 @@ Graduation earns the White Hat rank and a printable certificate with the learner
 - **5th-grade reading level:** sentences under 15 words, everyday words, one instruction at a time, at most two sentences per speech bubble, large text.
 - **Works silently.** Nothing has to be said aloud. Sound effects are optional with an off switch, and every sound has a caption.
 - **An on-screen keyboard** lights up keys as they are held and tapped, labelled like the learner's keys (Super is printed "Win" on many keyboards).
-- **Progress is saved;** levels can be replayed, and a grown-up can skip or reset.
+- **Progress is saved** to `$XDG_STATE_HOME/io.github.namlet.hacker-academy.json` (outside the plugin folder, which the shell watches for code changes), so it survives logging out. A settings screen lets a grown-up skip a mission or reset progress.
+- **Opened from a top-bar button,** so learners never need a command.
 - Disruptive missions (closing all windows, logging out) are meant for the learner's own account; the Academy warns first. Omarchy's Ctrl + Alt + Delete closes every app window but not the Academy, which is part of the shell like the top bar, so the mission can watch the windows close.
 
 ## Stack

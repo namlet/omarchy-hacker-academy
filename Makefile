@@ -15,4 +15,6 @@ test-qml:
 # Panel.qml is left out: qs.* and Quickshell types only resolve inside the
 # running shell, so it is checked by the manual smoke test instead.
 lint:
-	$(QT_BIN)/qmllint --max-warnings 0 components/*.qml tests/*.qml
+	@for f in components/*.qml tests/*.qml; do \
+		$(QT_BIN)/qmllint --max-warnings 0 "$$f" || { echo "qmllint failed: $$f"; exit 1; }; \
+	done
