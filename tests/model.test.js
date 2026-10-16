@@ -124,6 +124,7 @@ test("terminals and browsers are recognised like Omarchy tags them", () => {
     assert.equal(Model.appKind(c), "terminal", c)
   for (const c of ["chromium", "google-chrome", "brave-browser", "firefox", "zen", "librewolf"])
     assert.equal(Model.appKind(c), "browser", c)
+  assert.equal(Model.appKind("org.omarchy.screensaver"), "screensaver")
   for (const c of ["org.gnome.Nautilus", "footclient-ish", "chromium-app", ""])
     assert.equal(Model.appKind(c), "", c)
 })

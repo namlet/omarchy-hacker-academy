@@ -114,8 +114,10 @@ function pressedLabels(state) {
 var TERMINAL_CLASSES = /^(Alacritty|kitty|com\.mitchellh\.ghostty|foot|org\.codeberg\.dnkl\.foot|wezterm|org\.omarchy\..*|TUI\..*)$/
 var BROWSER_CLASSES = /^((google-)?[cC]hrom(e|ium)|[bB]rave-browser|[mM]icrosoft-edge|Vivaldi-stable|helium|[fF]irefox|zen|librewolf)$/
 
-// "terminal", "browser", or "" for any other app.
+// "terminal", "browser", "screensaver", or "" for any other app. Omarchy's screensaver
+// runs in a terminal window that opens and closes by itself, so it is singled out.
 function appKind(appClass) {
+  if (appClass === "org.omarchy.screensaver") return "screensaver"
   if (TERMINAL_CLASSES.test(appClass)) return "terminal"
   if (BROWSER_CLASSES.test(appClass)) return "browser"
   return ""

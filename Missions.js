@@ -269,7 +269,7 @@ var MISSIONS = [
       },
       {
         speaker: "bolt",
-        lines: ["I want to watch robot videos!", "Win, Shift, and B open the web browser."],
+        lines: ["I want to watch robot videos!", "Win, Shift, and B open the browser."],
         combo: ["Win", "Shift", "B"],
         expect: { type: "window", action: "open", app: "browser", label: "Open the browser." },
         success: { speaker: "mentor", line: "Two hold keys at once. Very smooth." },

@@ -434,6 +434,18 @@ Item {
       verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(3) !== -1)
     }
 
+    function test_mission_three_ignores_the_screensaver_coming_and_going() {
+      startMissionThree(1)
+      view.windowEvent({ name: "openwindow", data: "aa01,1,org.omarchy.screensaver,Screensaver" })
+      verify(!view.celebrating)
+      windowOpens("foot")
+      waitForCelebration()
+      view.windowEvent({ name: "closewindow", data: "aa01" })
+      verify(!view.celebrating)
+      windowCloses()
+      verify(view.celebrating)
+    }
+
     function test_mission_three_keys_light_up_when_help_grows() {
       startMissionThree(1)
       verify(!findChild(view, "combo-Win").lit)

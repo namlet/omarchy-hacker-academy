@@ -41,6 +41,8 @@ FocusScope {
   property bool shiftAlone: false
   property real shiftHeldMs: 0
   property bool letGoEarly: false
+  // Windows that come and go by themselves (the screensaver), so closing them isn't the learner's doing.
+  property var selfClosingWindows: []
   readonly property int tapMaxMs: 600
 
   readonly property bool finishedAll: root.session.mission >= root.missions.length
@@ -79,7 +81,14 @@ FocusScope {
   // A raw Hyprland event ({name, data}); windows opening and closing can finish a step.
   function windowEvent(event) {
     const w = Model.windowEvent(event)
-    if (w) root.handle({ type: "window", action: w.action, app: w.app })
+    if (!w) return
+    if (w.app === "screensaver") { root.selfClosingWindows = root.selfClosingWindows.concat([w.address]); return }
+    const selfClosing = root.selfClosingWindows.indexOf(w.address)
+    if (w.action === "close" && selfClosing !== -1) {
+      root.selfClosingWindows = root.selfClosingWindows.filter(function(a) { return a !== w.address })
+      return
+    }
+    root.handle({ type: "window", action: w.action, app: w.app })
   }
 
   // Called after the success moment; finishing the last step completes the mission.
