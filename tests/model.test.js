@@ -81,6 +81,31 @@ test("tapping a letter while holding shift keeps shift held", () => {
   assert.equal(state.taps, 1)
 })
 
+test("key labels match what is printed on the keys", () => {
+  assert.equal(Model.keyLabel(KEY_A), "A")
+  assert.equal(Model.keyLabel(0x37), "7")
+  assert.equal(Model.keyLabel(0x01000003), "Backspace")
+  assert.equal(Model.keyLabel(0x01000004), "Enter")
+  assert.equal(Model.keyLabel(Model.KEY_SUPER_L), "Win")
+  assert.equal(Model.keyLabel(Model.KEY_META), "Win")
+  assert.equal(Model.keyLabel(0x01000030), "")
+})
+
+test("pressed keys are lifted by physical key, even when the release reports another code", () => {
+  let state = Model.keyDown(Model.initialPressedState(), Model.KEY_SHIFT, 50)
+  state = Model.keyDown(state, KEY_A, 38)
+  assert.deepEqual(Model.pressedLabels(state).sort(), ["A", "Shift"])
+  state = Model.keyUp(state, KEY_CAPSLOCK, 50)
+  assert.deepEqual(Model.pressedLabels(state), ["A"])
+  state = Model.keyUp(state, KEY_A, 38)
+  assert.deepEqual(Model.pressedLabels(state), [])
+})
+
+test("keys the keyboard doesn't show are ignored", () => {
+  const state = Model.keyDown(Model.initialPressedState(), 0x01000030, 67)
+  assert.deepEqual(Model.pressedLabels(state), [])
+})
+
 test("openwindow events parse, keeping commas in the title", () => {
   const info = Model.parseOpenWindow({ name: "openwindow", data: "5d28,2,foot,Hello, world" })
   assert.deepEqual(info, { address: "5d28", workspace: "2", appClass: "foot", title: "Hello, world" })

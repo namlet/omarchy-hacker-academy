@@ -64,6 +64,51 @@ function isHeld(state, name) {
   return false
 }
 
+// The label printed on a key, as the on-screen keyboard shows it; "" for keys it doesn't show.
+var KEY_LABELS = {}
+KEY_LABELS[0x01000000] = "Esc"
+KEY_LABELS[0x01000001] = "Tab"
+KEY_LABELS[0x01000003] = "Backspace"
+KEY_LABELS[0x01000004] = "Enter"
+KEY_LABELS[0x01000005] = "Enter"
+KEY_LABELS[0x01000024] = "Caps"
+KEY_LABELS[0x20] = "Space"
+KEY_LABELS[KEY_SHIFT] = "Shift"
+KEY_LABELS[KEY_CONTROL] = "Ctrl"
+KEY_LABELS[KEY_ALT] = "Alt"
+KEY_LABELS[KEY_META] = "Win"
+KEY_LABELS[KEY_SUPER_L] = "Win"
+KEY_LABELS[KEY_SUPER_R] = "Win"
+
+function keyLabel(key) {
+  if ((key >= 0x41 && key <= 0x5a) || (key >= 0x30 && key <= 0x39)) return String.fromCharCode(key)
+  return KEY_LABELS[key] || ""
+}
+
+// Keys currently down, by physical key, so a release reported under another code
+// still lifts the right key: { down: { physicalKey: label } }.
+function initialPressedState() {
+  return { down: {} }
+}
+
+function keyDown(state, key, scanCode) {
+  var label = keyLabel(key)
+  if (!label) return state
+  return { down: withHeld(state.down, physicalKey(key, scanCode), label) }
+}
+
+function keyUp(state, key, scanCode) {
+  var id = physicalKey(key, scanCode)
+  if (!(id in state.down)) return state
+  return { down: withHeld(state.down, id, "") }
+}
+
+function pressedLabels(state) {
+  var out = []
+  for (var k in state.down) if (out.indexOf(state.down[k]) === -1) out.push(state.down[k])
+  return out
+}
+
 // Hyprland's openwindow event data is "address,workspace,class,title"; the title may contain commas.
 function parseOpenWindow(event) {
   if (!event || String(event.name) !== "openwindow") return null
@@ -90,6 +135,11 @@ if (typeof module !== "undefined") {
     releaseKey: releaseKey,
     releaseAll: releaseAll,
     isHeld: isHeld,
+    keyLabel: keyLabel,
+    initialPressedState: initialPressedState,
+    keyDown: keyDown,
+    keyUp: keyUp,
+    pressedLabels: pressedLabels,
     parseOpenWindow: parseOpenWindow,
     appLabel: appLabel
   }
