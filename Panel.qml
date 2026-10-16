@@ -47,6 +47,7 @@ Item {
     printErrors: false
     onLoaded: { view.progress = Engine.parseProgress(progressFile.text()); view.begin() }
     onLoadFailed: { view.progress = Engine.newProgress(); view.begin() }
+    onSaveFailed: (error) => console.warn("Hacker Academy: could not save progress to " + root.progressPath + " (error " + error + ")")
   }
 
   PanelWindow {

@@ -22,6 +22,15 @@ omarchy-shell shell toggle io.github.namlet.hacker-academy
 
 Press Esc, or click "close", to dismiss it. Progress is saved to `~/.local/state/io.github.namlet.hacker-academy.json` and picks up where the learner left off. **Settings** in the panel lets a grown-up skip a mission or reset progress.
 
+## Update
+
+```bash
+omarchy plugin update io.github.namlet.hacker-academy
+omarchy restart shell
+```
+
+Restart the shell after updating: it keeps a cached list of each plugin's files, so files added by an update aren't found until it restarts.
+
 ## Remove
 
 ```bash

@@ -10,8 +10,10 @@ var CODENAME_MAX = 16
 
 // ---------------------------------------------------------------- progress
 
+// completed: finished mission numbers. current: where an unfinished mission was left
+// ({mission, step, codename}), so closing the Academy mid-mission resumes there.
 function newProgress() {
-  return { version: PROGRESS_VERSION, codename: "", completed: [] }
+  return { version: PROGRESS_VERSION, codename: "", completed: [], current: null }
 }
 
 // Saved progress is user-editable text, so anything unexpected starts fresh.
@@ -23,7 +25,11 @@ function parseProgress(text) {
     ? p.completed.filter(function(n) { return Number.isInteger(n) && n >= 0 })
     : []
   var codename = typeof p.codename === "string" && isValidCodename(p.codename) ? p.codename.trim() : ""
-  return { version: PROGRESS_VERSION, codename: codename, completed: completed }
+  var c = p.current
+  var current = c && Number.isInteger(c.mission) && c.mission >= 0 && Number.isInteger(c.step) && c.step >= 0
+    ? { mission: c.mission, step: c.step, codename: typeof c.codename === "string" && isValidCodename(c.codename) ? c.codename.trim() : "" }
+    : null
+  return { version: PROGRESS_VERSION, codename: codename, completed: completed, current: current }
 }
 
 function serializeProgress(progress) {
@@ -39,7 +45,29 @@ function nextMission(missions, progress) {
 
 function completeMission(progress, index, codename) {
   var completed = progress.completed.indexOf(index) === -1 ? progress.completed.concat([index]) : progress.completed
-  return { version: PROGRESS_VERSION, codename: codename !== undefined ? codename : progress.codename, completed: completed }
+  return { version: PROGRESS_VERSION, codename: codename !== undefined ? codename : progress.codename, completed: completed, current: null }
+}
+
+// Remember the step a learner reached, so they can close the Academy and come back.
+function rememberStep(progress, session) {
+  return {
+    version: PROGRESS_VERSION,
+    codename: progress.codename,
+    completed: progress.completed,
+    current: { mission: session.mission, step: session.step, codename: session.codename }
+  }
+}
+
+// The session to start with: the remembered step if it belongs to the next mission, else its start.
+function resume(missions, progress) {
+  var index = nextMission(missions, progress)
+  var session = startMission(index)
+  var c = progress.current
+  if (c && c.mission === index && index < missions.length && c.step < missions[index].steps.length) {
+    session.step = c.step
+    session.codename = c.codename
+  }
+  return session
 }
 
 function isValidCodename(name) {
@@ -50,7 +78,7 @@ function isValidCodename(name) {
 // ---------------------------------------------------------------- a mission in play
 
 function startMission(index) {
-  return { mission: index, step: 0, count: 0, idleMs: 0, hint: 0, codename: "", done: false }
+  return { mission: index, step: 0, count: 0, idleMs: 0, hint: 0, codename: "", celebrating: false, done: false }
 }
 
 function currentStep(missions, session) {
@@ -65,32 +93,47 @@ function advance(missions, session) {
     step: last ? session.step : session.step + 1,
     count: 0, idleMs: 0, hint: 0,
     codename: session.codename,
+    celebrating: false,
     done: last
   }
 }
 
+// A finished step first celebrates, so the learner sees what they did, and only
+// moves on when finishCelebration() is called (the view does that after a pause).
+function celebrate(session, changes) {
+  var next = withChanges(session, { celebrating: true, idleMs: 0, hint: 0 })
+  for (var k in changes) next[k] = changes[k]
+  return next
+}
+
+function finishCelebration(missions, session) {
+  return session.celebrating ? advance(missions, session) : session
+}
+
 // event: {type: "button", id} | {type: "key", key} | {type: "submit", value}
+// A button step may also accept a key (expect.key), so Enter works before the mouse is taught.
 // Only progress resets the help timer, so mashing other keys still brings hints.
 function handle(missions, session, event) {
   var step = currentStep(missions, session)
-  if (!step || session.done) return session
+  if (!step || session.done || session.celebrating) return session
   var expect = step.expect
-  if (expect.type === "button" && event.type === "button" && event.id === expect.id)
-    return advance(missions, session)
+  if (expect.type === "button") {
+    var clicked = event.type === "button" && event.id === expect.id
+    var pressed = event.type === "key" && expect.key !== undefined && event.key === expect.key
+    return clicked || pressed ? celebrate(session, {}) : session
+  }
   if (expect.type === "key" && event.type === "key" && event.key === expect.key) {
     var count = session.count + 1
-    if (count >= (expect.times || 1)) return advance(missions, session)
+    if (count >= (expect.times || 1)) return celebrate(session, { count: count })
     return withChanges(session, { count: count, idleMs: 0, hint: 0 })
   }
-  if (expect.type === "codename" && event.type === "submit" && isValidCodename(event.value)) {
-    var next = advance(missions, session)
-    next.codename = String(event.value).trim()
-    return next
-  }
+  if (expect.type === "codename" && event.type === "submit" && isValidCodename(event.value))
+    return celebrate(session, { codename: String(event.value).trim() })
   return session
 }
 
 function tick(session, ms) {
+  if (session.celebrating || session.done) return session
   var idle = session.idleMs + ms
   var hint = 0
   for (var i = 0; i < HINT_DELAYS_MS.length; i++)
@@ -118,10 +161,13 @@ if (typeof module !== "undefined") {
     serializeProgress: serializeProgress,
     nextMission: nextMission,
     completeMission: completeMission,
+    rememberStep: rememberStep,
+    resume: resume,
     isValidCodename: isValidCodename,
     startMission: startMission,
     currentStep: currentStep,
     handle: handle,
+    finishCelebration: finishCelebration,
     tick: tick,
     render: render
   }

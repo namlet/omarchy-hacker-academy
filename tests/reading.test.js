@@ -14,7 +14,7 @@ function bubbles() {
     out.push(mission.title)
     for (const step of mission.steps) {
       out.push(step.lines.join(" "))
-      out.push(step.hint.bolt, step.hint.demo)
+      out.push(step.hint.bolt, step.hint.demo, step.success.line)
       if (step.expect.label) out.push(step.expect.label)
     }
   }
