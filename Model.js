@@ -109,16 +109,32 @@ function pressedLabels(state) {
   return out
 }
 
-// Hyprland's openwindow event data is "address,workspace,class,title"; the title may contain commas.
-function parseOpenWindow(event) {
-  if (!event || String(event.name) !== "openwindow") return null
-  var parts = String(event.data || "").split(",")
-  if (parts.length < 4) return null
-  return { address: parts[0], workspace: parts[1], appClass: parts[2], title: parts.slice(3).join(",") }
+// Omarchy tags these window classes as terminals and browsers (default/hypr/apps/
+// terminals.lua and browser.lua); the whole class must match.
+var TERMINAL_CLASSES = /^(Alacritty|kitty|com\.mitchellh\.ghostty|foot|org\.codeberg\.dnkl\.foot|wezterm|org\.omarchy\..*|TUI\..*)$/
+var BROWSER_CLASSES = /^((google-)?[cC]hrom(e|ium)|[bB]rave-browser|[mM]icrosoft-edge|Vivaldi-stable|helium|[fF]irefox|zen|librewolf)$/
+
+// "terminal", "browser", "screensaver", or "" for any other app. Omarchy's screensaver
+// runs in a terminal window that opens and closes by itself, so it is singled out.
+function appKind(appClass) {
+  if (appClass === "org.omarchy.screensaver") return "screensaver"
+  if (TERMINAL_CLASSES.test(appClass)) return "terminal"
+  if (BROWSER_CLASSES.test(appClass)) return "browser"
+  return ""
 }
 
-function appLabel(windowInfo) {
-  return windowInfo.title || windowInfo.appClass || "a window"
+// A window opening or closing, from Hyprland's raw events; null for anything else.
+// openwindow data is "address,workspace,class,title" (the title may contain commas);
+// closewindow data is "address".
+function windowEvent(event) {
+  if (!event) return null
+  var name = String(event.name)
+  var parts = String(event.data || "").split(",")
+  if (name === "openwindow" && parts.length >= 4)
+    return { action: "open", address: parts[0], app: appKind(parts[2]) }
+  if (name === "closewindow" && parts[0] !== "")
+    return { action: "close", address: parts[0], app: "" }
+  return null
 }
 
 if (typeof module !== "undefined") {
@@ -140,7 +156,7 @@ if (typeof module !== "undefined") {
     keyDown: keyDown,
     keyUp: keyUp,
     pressedLabels: pressedLabels,
-    parseOpenWindow: parseOpenWindow,
-    appLabel: appLabel
+    appKind: appKind,
+    windowEvent: windowEvent
   }
 }

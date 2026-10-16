@@ -191,6 +191,23 @@ test("a tap step needs a tap of that key, not a hold or a press", () => {
   assert.equal(s.celebrating, true)
 })
 
+test("a window step needs the right action, and the right app when it names one", () => {
+  const missions = [{ steps: [
+    { expect: { type: "window", action: "open", app: "terminal" } },
+    { expect: { type: "window", action: "close" } }
+  ] }]
+  let s = Engine.startMission(0)
+  s = Engine.handle(missions, s, { type: "window", action: "open", app: "browser" })
+  s = Engine.handle(missions, s, { type: "window", action: "close", app: "" })
+  s = Engine.handle(missions, s, { type: "key", key: "Enter" })
+  assert.equal(s.celebrating, false)
+  s = Engine.handle(missions, s, { type: "window", action: "open", app: "terminal" })
+  assert.equal(s.celebrating, true)
+  s = Engine.finishCelebration(missions, s)
+  s = Engine.handle(missions, s, { type: "window", action: "close", app: "" })
+  assert.equal(s.celebrating, true)
+})
+
 // ---------------------------------------------------------------- help
 
 test("help grows with idle time: hint, keys, demo", () => {
@@ -236,9 +253,10 @@ test("every step has a speaker, 1-2 lines, a known expectation, and full help", 
     for (const step of mission.steps) {
       assert.ok(["mentor", "bolt"].includes(step.speaker))
       assert.ok(step.lines.length >= 1 && step.lines.length <= 2)
-      assert.ok(["button", "key", "codename", "pointer", "anykey", "hold", "capital", "tap"].includes(step.expect.type))
+      assert.ok(["button", "key", "codename", "pointer", "anykey", "hold", "capital", "tap", "window"].includes(step.expect.type))
       assert.ok(step.hint.bolt && step.hint.demo && Array.isArray(step.hint.keys))
       assert.ok(["mentor", "bolt"].includes(step.success.speaker) && step.success.line)
+      if (step.expect.type === "window") assert.ok(step.combo && step.combo.length >= 2, "a window step shows its keys")
     }
   }
 })

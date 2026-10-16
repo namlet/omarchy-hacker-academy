@@ -183,6 +183,9 @@ Item {
       compare([view.session.mission, view.session.step], [2, 0])
       view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2], current: null }
       view.begin()
+      compare([view.session.mission, view.session.step], [3, 0])
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3], current: null }
+      view.begin()
       verify(view.finishedAll)
       verify(findChild(view, "comingSoon").visible)
     }
@@ -375,6 +378,81 @@ Item {
       keyClick(Qt.Key_Escape)
       verify(view.celebrating)
       compare(exited.count, 0)
+    }
+
+    // ------------------------------------------------------------ mission 3
+
+    function startMissionThree(step) {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2], current: { mission: 3, step: step, codename: "Zero" } }
+      view.begin()
+      wait(20)
+    }
+
+    function windowOpens(appClass) { view.windowEvent({ name: "openwindow", data: "5d28,1," + appClass + ",A window" }) }
+    function windowCloses() { view.windowEvent({ name: "closewindow", data: "5d28" }) }
+
+    function test_mission_three_sits_small_in_a_corner_and_lets_go_of_the_keyboard() {
+      startMissionTwo(0)
+      const keyboardWidth = view.implicitWidth
+      startMissionThree(0)
+      compare([view.stage, view.holdKeyboard], ["corner", false])
+      verify(!findChild(view, "keyboard").visible)
+      verify(view.implicitWidth < keyboardWidth)
+    }
+
+    function test_mission_three_end_to_end() {
+      startMissionThree(0)
+      const w = view.implicitWidth, h = view.implicitHeight
+      clickItem("button-ready")
+      waitForCelebration()
+
+      verify(findChild(view, "combo").visible)
+      verify(findChild(view, "combo-Win").visible && findChild(view, "combo-Enter").visible)
+      windowOpens("chromium")
+      windowCloses()
+      verify(!view.celebrating)
+      windowOpens("foot")
+      waitForCelebration()
+
+      compare(findChild(view, "instruction").text, "Close the terminal.")
+      windowCloses()
+      waitForCelebration()
+
+      windowOpens("foot")
+      verify(!view.celebrating)
+      verify(findChild(view, "combo-Shift").visible && findChild(view, "combo-B").visible)
+      windowOpens("chromium")
+      waitForCelebration()
+
+      windowCloses()
+      waitForCelebration()
+
+      verify(findChild(view, "badge").visible)
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+      clickItem("button-finish")
+      waitForCelebration()
+      verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(3) !== -1)
+    }
+
+    function test_mission_three_ignores_the_screensaver_coming_and_going() {
+      startMissionThree(1)
+      view.windowEvent({ name: "openwindow", data: "aa01,1,org.omarchy.screensaver,Screensaver" })
+      verify(!view.celebrating)
+      windowOpens("foot")
+      waitForCelebration()
+      view.windowEvent({ name: "closewindow", data: "aa01" })
+      verify(!view.celebrating)
+      windowCloses()
+      verify(view.celebrating)
+    }
+
+    function test_mission_three_keys_light_up_when_help_grows() {
+      startMissionThree(1)
+      verify(!findChild(view, "combo-Win").lit)
+      view.tick(Engine.HINT_DELAYS_MS[1])
+      verify(findChild(view, "combo-Win").lit && findChild(view, "combo-Enter").lit)
+      // The keyboard picture stays away: Omarchy's shortcuts never reach it.
+      verify(!findChild(view, "keyboard").visible)
     }
 
     function test_settings_skip_and_reset() {

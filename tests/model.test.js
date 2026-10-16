@@ -106,18 +106,25 @@ test("keys the keyboard doesn't show are ignored", () => {
   assert.deepEqual(Model.pressedLabels(state), [])
 })
 
-test("openwindow events parse, keeping commas in the title", () => {
-  const info = Model.parseOpenWindow({ name: "openwindow", data: "5d28,2,foot,Hello, world" })
-  assert.deepEqual(info, { address: "5d28", workspace: "2", appClass: "foot", title: "Hello, world" })
+test("opening and closing windows are read from Hyprland's events", () => {
+  assert.deepEqual(Model.windowEvent({ name: "openwindow", data: "5d28,2,foot,Hello, world" }), { action: "open", address: "5d28", app: "terminal" })
+  assert.deepEqual(Model.windowEvent({ name: "openwindow", data: "5d29,1,chromium,New Tab" }), { action: "open", address: "5d29", app: "browser" })
+  assert.deepEqual(Model.windowEvent({ name: "closewindow", data: "5d28" }), { action: "close", address: "5d28", app: "" })
 })
 
 test("other events and malformed data are ignored", () => {
-  assert.equal(Model.parseOpenWindow({ name: "closewindow", data: "5d28" }), null)
-  assert.equal(Model.parseOpenWindow({ name: "openwindow", data: "5d28,2" }), null)
-  assert.equal(Model.parseOpenWindow(null), null)
+  assert.equal(Model.windowEvent({ name: "activewindow", data: "foot,Hello" }), null)
+  assert.equal(Model.windowEvent({ name: "openwindow", data: "5d28,2" }), null)
+  assert.equal(Model.windowEvent({ name: "closewindow", data: "" }), null)
+  assert.equal(Model.windowEvent(null), null)
 })
 
-test("app label prefers the title, then the class", () => {
-  assert.equal(Model.appLabel({ appClass: "foot", title: "Terminal" }), "Terminal")
-  assert.equal(Model.appLabel({ appClass: "foot", title: "" }), "foot")
+test("terminals and browsers are recognised like Omarchy tags them", () => {
+  for (const c of ["Alacritty", "kitty", "com.mitchellh.ghostty", "foot", "org.omarchy.terminal", "TUI.float"])
+    assert.equal(Model.appKind(c), "terminal", c)
+  for (const c of ["chromium", "google-chrome", "brave-browser", "firefox", "zen", "librewolf"])
+    assert.equal(Model.appKind(c), "browser", c)
+  assert.equal(Model.appKind("org.omarchy.screensaver"), "screensaver")
+  for (const c of ["org.gnome.Nautilus", "footclient-ish", "chromium-app", ""])
+    assert.equal(Model.appKind(c), "", c)
 })

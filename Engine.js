@@ -114,6 +114,7 @@ function finishCelebration(missions, session) {
 //      | {type: "pointer", action: "hover" | "click" | "rightclick" | "drop", id, target?}
 //      | {type: "held", key, ms}   a hold key has been down this long
 //      | {type: "tap", key}        a hold key was pressed and let go quickly, alone
+//      | {type: "window", action: "open" | "close", app}   a real window on the desktop
 // Key events may carry text (what the key typed) and shift (Shift was held).
 // A button step may also accept a key (expect.key), so Enter works before the mouse is taught.
 // Only progress resets the help timer, so mashing other keys still brings hints.
@@ -145,6 +146,10 @@ function handle(missions, session, event) {
   if (expect.type === "capital" && event.type === "key" && /^[A-Z]$/.test(event.key) && event.shift)
     return celebrate(session, { typed: event.key })
   if (expect.type === "tap" && event.type === "tap" && event.key === expect.key)
+    return celebrate(session, {})
+  // A window step names the action and, for opening, which kind of app.
+  if (expect.type === "window" && event.type === "window" && event.action === expect.action
+      && (expect.app === undefined || event.app === expect.app))
     return celebrate(session, {})
   return session
 }
