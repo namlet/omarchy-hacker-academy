@@ -75,8 +75,7 @@ Item {
       compare(saved.signalArguments[0][0].completed, [0])
       compare(saved.signalArguments[0][0].codename, "Zero")
       compare(saved.signalArguments[0][0].current, null)
-      verify(view.finishedAll)
-      verify(findChild(view, "comingSoon").visible)
+      compare([view.session.mission, view.session.step], [1, 0])
     }
 
     function test_enter_starts_without_the_mouse() {
@@ -178,7 +177,109 @@ Item {
     function test_continues_at_the_next_unfinished_mission() {
       view.progress = { version: 1, codename: "Zero", completed: [0], current: null }
       view.begin()
+      compare([view.session.mission, view.session.step], [1, 0])
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1], current: null }
+      view.begin()
       verify(view.finishedAll)
+      verify(findChild(view, "comingSoon").visible)
+    }
+
+    // ------------------------------------------------------------ mission 1
+
+    function startMissionOne() {
+      view.progress = { version: 1, codename: "Zero", completed: [0], current: null }
+      view.begin()
+      wait(20)
+    }
+
+    function target(name) {
+      const item = findChild(view, "target-" + name)
+      verify(item !== null && item.visible, name + " should be visible")
+      return item
+    }
+
+    function test_mission_one_hover_onto_bolt() {
+      const playground = findChild(view, "playground")
+      // Park the arrow where Bolt will appear, before the mission starts.
+      mouseMove(playground, playground.width / 2, playground.height / 2)
+      startMissionOne()
+      wait(50)
+      verify(playground.visible)
+      compare(findChild(view, "keyboard").opacity, 0)
+      verify(!view.celebrating, "an arrow already resting on Bolt doesn't count")
+      mouseMove(playground, 5, 5)
+      mouseMove(target("bolt"))
+      verify(view.celebrating)
+    }
+
+    function test_mission_one_click_five_bugs() {
+      startMissionOne()
+      view.session = Object.assign({}, view.session, { step: 1 })
+      wait(20)
+      for (let i = 1; i <= 5; i++) {
+        const bug = target("bug" + i)
+        mouseClick(bug)
+        wait(10)
+        verify(!bug.visible, "caught bugs disappear")
+      }
+      verify(view.celebrating)
+      compare(findChild(view, "tally").text, "5 of 5")
+    }
+
+    // Drag like a hand: press on the bug, move across the playground (which stays put), let go.
+    function dragTo(item, toX, toY) {
+      const area = findChild(view, "playground")
+      const from = item.mapToItem(area, item.width / 2, item.height / 2)
+      mousePress(area, from.x, from.y)
+      for (let i = 1; i <= 8; i++)
+        mouseMove(area, from.x + (toX - from.x) * i / 8, from.y + (toY - from.y) * i / 8, 10)
+      mouseRelease(area, toX, toY)
+    }
+
+    function test_mission_one_drag_misses_then_lands_in_the_jar() {
+      startMissionOne()
+      view.session = Object.assign({}, view.session, { step: 2 })
+      wait(20)
+      const bug = target("bigbug"), jar = target("jar")
+      const homeX = bug.x
+      dragTo(bug, 10, bug.y + bug.height / 2)
+      verify(!view.celebrating, "dropping on the floor doesn't count")
+      compare(bug.x, homeX, "a missed drop goes back home")
+      dragTo(bug, jar.x + jar.width / 2, jar.y + jar.height / 2)
+      verify(view.celebrating)
+    }
+
+    function test_mission_one_scroll_then_click_the_hidden_bug() {
+      startMissionOne()
+      view.session = Object.assign({}, view.session, { step: 3 })
+      wait(20)
+      const scroller = findChild(view, "scroller")
+      compare(scroller.contentY, 0)
+      for (let i = 0; i < 20 && !scroller.atYEnd; i++) {
+        mouseWheel(scroller, scroller.width / 2, scroller.height / 2, 0, -120)
+        wait(30)
+      }
+      verify(scroller.contentY > 0, "the wheel scrolls")
+      tryVerify(function() { return scroller.atYEnd && !scroller.moving }, 2000)
+      mouseClick(target("hidden"))
+      verify(view.celebrating)
+    }
+
+    function test_mission_one_sneaky_bug_needs_a_right_click() {
+      startMissionOne()
+      view.session = Object.assign({}, view.session, { step: 4 })
+      wait(20)
+      mouseClick(target("sneaky"))
+      verify(!view.celebrating)
+      mouseClick(target("sneaky"), undefined, undefined, Qt.RightButton)
+      verify(view.celebrating)
+    }
+
+    function test_mission_one_targets_glow_when_help_lights_up() {
+      startMissionOne()
+      verify(!findChild(view, "playground").highlight)
+      view.tick(Engine.HINT_DELAYS_MS[1])
+      verify(findChild(view, "playground").highlight)
     }
 
     function test_settings_skip_and_reset() {
@@ -186,7 +287,7 @@ Item {
       verify(findChild(view, "settings").visible)
       clickItem("settings-skip")
       compare(saved.signalArguments[0][0].completed, [0])
-      verify(view.finishedAll)
+      compare(view.session.mission, 1)
 
       clickItem("settingsButton")
       clickItem("settings-reset")
