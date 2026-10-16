@@ -78,7 +78,7 @@ function isValidCodename(name) {
 // ---------------------------------------------------------------- a mission in play
 
 function startMission(index) {
-  return { mission: index, step: 0, count: 0, hits: [], idleMs: 0, hint: 0, codename: "", celebrating: false, done: false }
+  return { mission: index, step: 0, count: 0, hits: [], typed: "", idleMs: 0, hint: 0, codename: "", celebrating: false, done: false }
 }
 
 function currentStep(missions, session) {
@@ -91,7 +91,7 @@ function advance(missions, session) {
   return {
     mission: session.mission,
     step: last ? session.step : session.step + 1,
-    count: 0, hits: [], idleMs: 0, hint: 0,
+    count: 0, hits: [], typed: "", idleMs: 0, hint: 0,
     codename: session.codename,
     celebrating: false,
     done: last
@@ -112,6 +112,9 @@ function finishCelebration(missions, session) {
 
 // event: {type: "button", id} | {type: "key", key} | {type: "submit", value}
 //      | {type: "pointer", action: "hover" | "click" | "rightclick" | "drop", id, target?}
+//      | {type: "held", key, ms}   a hold key has been down this long
+//      | {type: "tap", key}        a hold key was pressed and let go quickly, alone
+// Key events may carry text (what the key typed) and shift (Shift was held).
 // A button step may also accept a key (expect.key), so Enter works before the mouse is taught.
 // Only progress resets the help timer, so mashing other keys still brings hints.
 function handle(missions, session, event) {
@@ -131,7 +134,23 @@ function handle(missions, session, event) {
   if (expect.type === "codename" && event.type === "submit" && isValidCodename(event.value))
     return celebrate(session, { codename: String(event.value).trim() })
   if (expect.type === "pointer" && event.type === "pointer") return handlePointer(expect, session, event)
+  if (expect.type === "anykey" && event.type === "key" && isLetterOrDigit(event.key)) {
+    var typed = (session.typed + (event.text || event.key.toLowerCase())).slice(-12)
+    var taps = session.count + 1
+    if (taps >= expect.times) return celebrate(session, { count: taps, typed: typed })
+    return withChanges(session, { count: taps, typed: typed, idleMs: 0, hint: 0 })
+  }
+  if (expect.type === "hold" && event.type === "held" && event.key === expect.key && event.ms >= expect.ms)
+    return celebrate(session, {})
+  if (expect.type === "capital" && event.type === "key" && /^[A-Z]$/.test(event.key) && event.shift)
+    return celebrate(session, { typed: event.key })
+  if (expect.type === "tap" && event.type === "tap" && event.key === expect.key)
+    return celebrate(session, {})
   return session
+}
+
+function isLetterOrDigit(label) {
+  return /^[A-Z0-9]$/.test(label)
 }
 
 // A pointer step lists targets (ids) to hover, click, right-click, or drop on
