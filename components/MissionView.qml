@@ -120,7 +120,7 @@ FocusScope {
     root.trackDown(event)
     if (event.key === Qt.Key_Escape) { root.exitRequested(); return }
     if (!event.isAutoRepeat) {
-      var label = Model.keyLabel(event.key)
+      const label = Model.keyLabel(event.key)
       if (label) root.handle({ type: "key", key: label })
     }
   }
