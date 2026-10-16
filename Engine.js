@@ -78,7 +78,7 @@ function isValidCodename(name) {
 // ---------------------------------------------------------------- a mission in play
 
 function startMission(index) {
-  return { mission: index, step: 0, count: 0, idleMs: 0, hint: 0, codename: "", celebrating: false, done: false }
+  return { mission: index, step: 0, count: 0, hits: [], idleMs: 0, hint: 0, codename: "", celebrating: false, done: false }
 }
 
 function currentStep(missions, session) {
@@ -91,7 +91,7 @@ function advance(missions, session) {
   return {
     mission: session.mission,
     step: last ? session.step : session.step + 1,
-    count: 0, idleMs: 0, hint: 0,
+    count: 0, hits: [], idleMs: 0, hint: 0,
     codename: session.codename,
     celebrating: false,
     done: last
@@ -111,6 +111,7 @@ function finishCelebration(missions, session) {
 }
 
 // event: {type: "button", id} | {type: "key", key} | {type: "submit", value}
+//      | {type: "pointer", action: "hover" | "click" | "rightclick" | "drop", id, target?}
 // A button step may also accept a key (expect.key), so Enter works before the mouse is taught.
 // Only progress resets the help timer, so mashing other keys still brings hints.
 function handle(missions, session, event) {
@@ -129,7 +130,19 @@ function handle(missions, session, event) {
   }
   if (expect.type === "codename" && event.type === "submit" && isValidCodename(event.value))
     return celebrate(session, { codename: String(event.value).trim() })
+  if (expect.type === "pointer" && event.type === "pointer") return handlePointer(expect, session, event)
   return session
+}
+
+// A pointer step lists targets (ids) to hover, click, right-click, or drop on
+// expect.target; it is done once every target has been hit.
+function handlePointer(expect, session, event) {
+  if (event.action !== expect.action || expect.ids.indexOf(event.id) === -1) return session
+  if (expect.action === "drop" && event.target !== expect.target) return session
+  if (session.hits.indexOf(event.id) !== -1) return session
+  var hits = session.hits.concat([event.id])
+  if (hits.length >= expect.ids.length) return celebrate(session, { hits: hits, count: hits.length })
+  return withChanges(session, { hits: hits, count: hits.length, idleMs: 0, hint: 0 })
 }
 
 function tick(session, ms) {

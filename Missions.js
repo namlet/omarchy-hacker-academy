@@ -59,6 +59,85 @@ var MISSIONS = [
         }
       }
     ]
+  },
+  {
+    id: "pointer",
+    title: "Pointer Control",
+    stage: "center",
+    holdKeyboard: true,
+    steps: [
+      {
+        speaker: "mentor",
+        lines: ["Hackers don't touch the screen. They steer an arrow."],
+        play: "bolt",
+        expect: { type: "pointer", action: "hover", ids: ["bolt"], label: "Move the arrow onto Bolt." },
+        success: { speaker: "bolt", line: "Hey, that tickles!" },
+        hint: {
+          bolt: "Slide one finger on the touchpad. Or move the mouse.",
+          keys: [],
+          demo: "Watch the arrow as you move. Stop when it sits on me."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["Uh oh. My antenna sparked, and bugs got out!"],
+        play: "bugs",
+        expect: { type: "pointer", action: "click", ids: ["bug1", "bug2", "bug3", "bug4", "bug5"], label: "Click each bug to catch it." },
+        success: { speaker: "mentor", line: "Five bugs caught. Nice work!" },
+        hint: {
+          bolt: "Put the arrow on a bug. Then press the button once.",
+          keys: [],
+          demo: "Point at a bug and click. Do that for every bug."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["This bug is too big to click.", "Drag it into the jar instead."],
+        play: "drag",
+        expect: { type: "pointer", action: "drop", ids: ["bigbug"], target: "jar", label: "Drag the big bug into the jar." },
+        success: { speaker: "bolt", line: "It fits! Just barely." },
+        hint: {
+          bolt: "Press the button and hold it down. Move the bug, then let go.",
+          keys: [],
+          demo: "Keep holding while you move. Let go when the bug is over the jar."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["One bug is hiding way down low.", "Scroll down to find it."],
+        play: "scroll",
+        expect: { type: "pointer", action: "click", ids: ["hidden"], label: "Scroll down, then click the bug." },
+        success: { speaker: "mentor", line: "Found it! Scrolling shows what is hidden." },
+        hint: {
+          bolt: "Slide two fingers up the touchpad. Or roll the mouse wheel.",
+          keys: [],
+          demo: "Keep scrolling until you see the bug. Then click it."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["The last bug is sneaky.", "It only answers a right-click."],
+        play: "sneaky",
+        expect: { type: "pointer", action: "rightclick", ids: ["sneaky"], label: "Right-click the sneaky bug." },
+        success: { speaker: "bolt", line: "Got it! That was the last bug!" },
+        hint: {
+          bolt: "Tap the touchpad with two fingers. Or press the right mouse button.",
+          keys: [],
+          demo: "Point at the bug. Then click with the right side of the mouse."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["You steer like a pro now.", "Next, teach me the keyboard!"],
+        expect: { type: "button", id: "finish", label: "Finish mission", key: "Enter" },
+        success: { speaker: "mentor", line: "Mission complete, {codename}!" },
+        hint: {
+          bolt: "Click the button. You know how now!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      }
+    ]
   }
 ]
 
@@ -66,6 +145,7 @@ var MISSIONS = [
 var UI = {
   comingSoon: "Your next mission is coming soon. Great work so far!",
   orEnter: "Tap Enter or click the button.",
+  keepScrolling: "Keep scrolling down.",
   codenamePrompt: "Your hacker name",
   close: "Tap Esc or click here to close.",
   settings: "Settings"

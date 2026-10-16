@@ -284,6 +284,33 @@ FocusScope {
         }
       }
 
+      // Pointer steps: what to do, and how many targets are caught so far.
+      Column {
+        visible: root.expectType === "pointer"
+        anchors.centerIn: parent
+        spacing: root.fontSize / 3
+
+        Text {
+          objectName: "instruction"
+          anchors.horizontalCenter: parent.horizontalCenter
+          text: root.expectType === "pointer" ? root.step.expect.label : ""
+          color: root.accentColor
+          font.family: root.fontFamily
+          font.pixelSize: root.fontSize * 1.3
+          font.bold: true
+        }
+
+        Text {
+          objectName: "tally"
+          anchors.horizontalCenter: parent.horizontalCenter
+          visible: root.expectType === "pointer" && root.step.expect.ids.length > 1
+          text: root.expectType === "pointer" ? root.session.hits.length + " of " + root.step.expect.ids.length : ""
+          color: root.dimColor
+          font.family: root.fontFamily
+          font.pixelSize: root.fontSize
+        }
+      }
+
       // Bolt's typo, with a blinking cursor where Backspace erases.
       Row {
         visible: root.step !== null && root.step.field !== undefined
@@ -443,7 +470,30 @@ FocusScope {
       }
     }
 
-    // The keyboard keeps its space even when hidden.
+    // The keyboard keeps its space even when hidden; pointer steps play in the same space.
+    Item {
+      width: keyboard.implicitWidth
+      height: keyboard.implicitHeight
+
+    PointerPlayground {
+      id: playground
+      objectName: "playground"
+      anchors.fill: parent
+      visible: root.expectType === "pointer" && !root.showingSettings
+      enabled: !root.celebrating
+      play: root.step && root.step.play ? root.step.play : ""
+      hits: root.session.hits
+      highlight: root.session.hint >= 2
+      textColor: root.textColor
+      dimColor: root.dimColor
+      accentColor: root.accentColor
+      boltColor: root.boltColor
+      fontFamily: root.fontFamily
+      fontSize: root.fontSize
+      keepScrollingText: Missions.UI.keepScrolling
+      onPointerEvent: (event) => root.handle(event)
+    }
+
     OnScreenKeyboard {
       id: keyboard
       objectName: "keyboard"
@@ -457,6 +507,7 @@ FocusScope {
       unit: root.unit
 
       Behavior on opacity { NumberAnimation { duration: 200 } }
+    }
     }
 
     Text {

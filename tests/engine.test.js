@@ -120,6 +120,34 @@ test("a codename step needs a valid name and finishes the mission when last", ()
   assert.equal(s.codename, "Zero Cool")
 })
 
+test("a pointer step needs every target, once each, with the right action", () => {
+  const missions = [{ steps: [{ expect: { type: "pointer", action: "click", ids: ["a", "b"] } }] }]
+  let s = Engine.startMission(0)
+  s = Engine.handle(missions, s, { type: "pointer", action: "rightclick", id: "a" })
+  s = Engine.handle(missions, s, { type: "pointer", action: "click", id: "zzz" })
+  assert.deepEqual(s.hits, [])
+  s = Engine.handle(missions, s, { type: "pointer", action: "click", id: "a" })
+  s = Engine.handle(missions, s, { type: "pointer", action: "click", id: "a" })
+  assert.deepEqual([s.hits, s.count, s.celebrating], [["a"], 1, false])
+  s = Engine.handle(missions, s, { type: "pointer", action: "click", id: "b" })
+  assert.deepEqual([s.count, s.celebrating], [2, true])
+})
+
+test("a drop only counts on the right target", () => {
+  const missions = [{ steps: [{ expect: { type: "pointer", action: "drop", ids: ["big"], target: "jar" } }] }]
+  let s = Engine.handle(missions, Engine.startMission(0), { type: "pointer", action: "drop", id: "big", target: "floor" })
+  assert.equal(s.celebrating, false)
+  s = Engine.handle(missions, s, { type: "pointer", action: "drop", id: "big", target: "jar" })
+  assert.equal(s.celebrating, true)
+})
+
+test("hits reset when the next step starts", () => {
+  const missions = [{ steps: [{ expect: { type: "pointer", action: "hover", ids: ["bolt"] } }, { expect: { type: "button", id: "x" } }] }]
+  let s = Engine.handle(missions, Engine.startMission(0), { type: "pointer", action: "hover", id: "bolt" })
+  s = Engine.finishCelebration(missions, s)
+  assert.deepEqual([s.step, s.hits, s.count], [1, [], 0])
+})
+
 // ---------------------------------------------------------------- help
 
 test("help grows with idle time: hint, keys, demo", () => {
@@ -165,7 +193,7 @@ test("every step has a speaker, 1-2 lines, a known expectation, and full help", 
     for (const step of mission.steps) {
       assert.ok(["mentor", "bolt"].includes(step.speaker))
       assert.ok(step.lines.length >= 1 && step.lines.length <= 2)
-      assert.ok(["button", "key", "codename"].includes(step.expect.type))
+      assert.ok(["button", "key", "codename", "pointer"].includes(step.expect.type))
       assert.ok(step.hint.bolt && step.hint.demo && Array.isArray(step.hint.keys))
       assert.ok(["mentor", "bolt"].includes(step.success.speaker) && step.success.line)
     }
