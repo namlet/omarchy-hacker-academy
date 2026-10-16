@@ -266,10 +266,13 @@ Item {
       let lastX = -1
       tryVerify(function() { const still = bug.x === lastX; lastX = bug.x; wait(60); return still }, 5000, "bug comes to rest")
       mouseMove(bug)
-      tryVerify(function() { return bug.hovered }, 1000, "the arrow is on the bug")
-      const x1 = bug.x, y1 = bug.y
+      // Bugs wander randomly, so another one may be on top here: the top bug gets the arrow.
+      const bugs = [1, 2, 3, 4, 5].map(function(i) { return findChild(view, "target-bug" + i) })
+      let aimed = null
+      tryVerify(function() { aimed = bugs.find(function(b) { return b.hovered }) || null; return aimed !== null }, 1000, "the arrow is on a bug")
+      const x1 = aimed.x, y1 = aimed.y
       wait(2500)
-      compare([bug.x, bug.y], [x1, y1], "a bug under the arrow stays put")
+      compare([aimed.x, aimed.y], [x1, y1], "a bug under the arrow stays put")
       // Another crawling bug may have wandered on top; clicking catches whichever is on top.
       mouseClick(bug)
       compare(view.session.hits.length, 1)
