@@ -11,7 +11,8 @@ test("saved progress round-trips", () => {
 })
 
 test("a remembered step resumes the mission there", () => {
-  const missions = [{ steps: [{}, {}, {}] }, { steps: [{}] }]
+  const step = { expect: { type: "button", id: "go" } }
+  const missions = [{ steps: [step, step, step] }, { steps: [step] }]
   let p = Engine.rememberStep(Engine.newProgress(), { mission: 0, step: 2, codename: "Zero" })
   p = Engine.parseProgress(Engine.serializeProgress(p))
   const s = Engine.resume(missions, p)
@@ -191,21 +192,46 @@ test("a tap step needs a tap of that key, not a hold or a press", () => {
   assert.equal(s.celebrating, true)
 })
 
-test("a window step needs the right action, and the right app when it names one", () => {
-  const missions = [{ steps: [
-    { expect: { type: "window", action: "open", app: "terminal" } },
-    { expect: { type: "window", action: "close" } }
-  ] }]
+const WINDOW_MISSIONS = [{ steps: [
+  { expect: { type: "window", action: "open", app: "terminal" } },
+  { expect: { type: "window", action: "close", app: "terminal" } }
+] }]
+const opened = (address, app) => ({ type: "window", action: "open", address: address, app: app })
+const closed = (address) => ({ type: "window", action: "close", address: address, app: "" })
+
+test("opening a window counts only for the right kind of app", () => {
   let s = Engine.startMission(0)
-  s = Engine.handle(missions, s, { type: "window", action: "open", app: "browser" })
-  s = Engine.handle(missions, s, { type: "window", action: "close", app: "" })
-  s = Engine.handle(missions, s, { type: "key", key: "Enter" })
+  s = Engine.handle(WINDOW_MISSIONS, s, opened("b1", "browser"))
+  s = Engine.handle(WINDOW_MISSIONS, s, { type: "key", key: "Enter" })
   assert.equal(s.celebrating, false)
-  s = Engine.handle(missions, s, { type: "window", action: "open", app: "terminal" })
+  s = Engine.handle(WINDOW_MISSIONS, s, opened("t1", "terminal"))
   assert.equal(s.celebrating, true)
-  s = Engine.finishCelebration(missions, s)
-  s = Engine.handle(missions, s, { type: "window", action: "close", app: "" })
+})
+
+test("closing counts only for a window the learner opened, of the right kind", () => {
+  let s = Engine.startMission(0)
+  s = Engine.handle(WINDOW_MISSIONS, s, opened("b1", "browser"))
+  s = Engine.finishCelebration(WINDOW_MISSIONS, Engine.handle(WINDOW_MISSIONS, s, opened("t1", "terminal")))
+  s = Engine.handle(WINDOW_MISSIONS, s, closed("grownups"))
+  s = Engine.handle(WINDOW_MISSIONS, s, closed("b1"))
+  assert.equal(s.celebrating, false)
+  s = Engine.handle(WINDOW_MISSIONS, s, closed("t1"))
   assert.equal(s.celebrating, true)
+  assert.deepEqual(s.windows, [])
+})
+
+test("the learner's windows carry through the mission's steps", () => {
+  let s = Engine.handle(WINDOW_MISSIONS, Engine.startMission(0), opened("t1", "terminal"))
+  s = Engine.finishCelebration(WINDOW_MISSIONS, s)
+  assert.deepEqual([s.step, s.windows], [1, [{ address: "t1", app: "terminal" }]])
+})
+
+test("a close step without the learner's window resumes at the step that opens it", () => {
+  const p = Engine.rememberStep(Engine.newProgress(), { mission: 0, step: 1, codename: "" })
+  assert.equal(Engine.resume(WINDOW_MISSIONS, p).step, 0)
+  const before = Object.assign(Engine.startMission(0), { step: 1, windows: [{ address: "t1", app: "terminal" }] })
+  const s = Engine.resume(WINDOW_MISSIONS, p, before)
+  assert.deepEqual([s.step, s.windows.length], [1, 1])
 })
 
 // ---------------------------------------------------------------- help
