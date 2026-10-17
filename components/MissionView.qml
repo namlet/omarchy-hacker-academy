@@ -267,12 +267,16 @@ FocusScope {
         border.width: 2
         border.color: root.step && root.step.speaker === "bolt" ? root.boltColor : root.dimColor
 
-        Text {
-          anchors.centerIn: parent
-          text: root.step && root.step.speaker === "bolt" ? "BOLT" : "MENTOR"
-          color: root.textColor
-          font.family: root.fontFamily
-          font.pixelSize: root.fontSize * 0.6
+        PixelSprite {
+          objectName: "portraitSprite"
+          anchors.fill: parent
+          anchors.margins: root.fontSize * 0.3
+          sprite: root.step && root.step.speaker === "bolt" ? "bolt" : "mentor"
+          lineColor: root.textColor
+          boltColor: root.boltColor
+          accentColor: root.accentColor
+          dimColor: root.dimColor
+          backgroundColor: root.backgroundColor
         }
       }
 
@@ -670,6 +674,7 @@ FocusScope {
       dimColor: root.dimColor
       accentColor: root.accentColor
       boltColor: root.boltColor
+      backgroundColor: root.backgroundColor
       fontFamily: root.fontFamily
       fontSize: root.fontSize
       keepScrollingText: Missions.UI.keepScrolling

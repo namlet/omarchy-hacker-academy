@@ -4,8 +4,7 @@ import QtQuick
 
 // Mission 1's play area: things to hover, click, drag, scroll to, and right-click.
 // `play` picks the layout; caught targets (`hits`) disappear; `highlight` makes
-// the targets glow when the learner needs help. Shapes are placeholders until the
-// pixel art arrives.
+// the targets glow when the learner needs help. Drawn with the sprites in Sprites.js.
 Item {
   id: root
 
@@ -16,6 +15,7 @@ Item {
   property color dimColor: "gray"
   property color accentColor: "orange"
   property color boltColor: "deepskyblue"
+  property color backgroundColor: "black"
   property string fontFamily: "monospace"
   property int fontSize: 16
   property string keepScrollingText: "Keep scrolling down."
@@ -38,42 +38,34 @@ Item {
     scroller.contentY = 0
   }
 
-  // A placeholder bug: a round body with two antennae and the word "bug".
+  // A sprite in the theme's colors that pulses while the learner needs help.
+  component Art: PixelSprite {
+    id: art
+    property bool glowing: root.highlight
+    lineColor: root.textColor
+    boltColor: root.boltColor
+    accentColor: root.accentColor
+    dimColor: root.dimColor
+    backgroundColor: root.backgroundColor
+
+    SequentialAnimation on opacity {
+      running: art.glowing
+      loops: Animation.Infinite
+      onStopped: art.opacity = 1
+      NumberAnimation { to: 0.35; duration: 400 }
+      NumberAnimation { to: 1; duration: 400 }
+    }
+  }
+
   component Bug: Item {
     id: bug
     property string bugId: ""
+    property string look: "bug"
     property real size: root.bugSize
-    property bool glowing: root.highlight
     width: bug.size
     height: bug.size
 
-    Rectangle {
-      anchors.fill: parent
-      anchors.margins: bug.size * 0.12
-      radius: width / 2
-      color: "transparent"
-      border.color: root.boltColor
-      border.width: bug.glowing ? 4 : 2
-
-      SequentialAnimation on opacity {
-        running: bug.glowing
-        loops: Animation.Infinite
-        onStopped: bug.opacity = 1
-        NumberAnimation { to: 0.35; duration: 400 }
-        NumberAnimation { to: 1; duration: 400 }
-      }
-    }
-
-    Rectangle { x: bug.size * 0.3; y: 0; width: 2; height: bug.size * 0.2; color: root.boltColor; rotation: -25 }
-    Rectangle { x: bug.size * 0.68; y: 0; width: 2; height: bug.size * 0.2; color: root.boltColor; rotation: 25 }
-
-    Text {
-      anchors.centerIn: parent
-      text: "bug"
-      color: root.textColor
-      font.family: root.fontFamily
-      font.pixelSize: bug.size * 0.24
-    }
+    Art { anchors.fill: parent; sprite: bug.look }
   }
 
   MouseArea {
@@ -84,25 +76,21 @@ Item {
     onPositionChanged: root.armed = true
   }
 
-  // Step: move the arrow onto Bolt.
-  Rectangle {
+  // Step: move the arrow onto Bolt, who wiggles with delight.
+  Item {
     objectName: "target-bolt"
     visible: root.play === "bolt"
     anchors.centerIn: parent
     width: root.fontSize * 7
     height: root.fontSize * 7
-    radius: root.fontSize
-    color: boltArea.containsMouse ? root.boltColor : "transparent"
-    border.color: root.boltColor
-    border.width: root.highlight ? 5 : 2
 
-    Text {
-      anchors.centerIn: parent
-      text: "BOLT"
-      color: boltArea.containsMouse ? "black" : root.textColor
-      font.family: root.fontFamily
-      font.pixelSize: root.fontSize * 1.3
-      font.bold: true
+    Art {
+      anchors.fill: parent
+      sprite: "bolt"
+      rotation: boltArea.containsMouse ? 8 : 0
+      scale: boltArea.containsMouse ? 1.1 : 1
+      Behavior on rotation { NumberAnimation { duration: 120 } }
+      Behavior on scale { NumberAnimation { duration: 120 } }
     }
 
     MouseArea {
@@ -172,7 +160,7 @@ Item {
   }
 
   // Step: drag the big bug into the jar.
-  Rectangle {
+  Item {
     id: jar
     objectName: "target-jar"
     visible: root.play === "drag"
@@ -180,15 +168,13 @@ Item {
     y: (root.height - height) / 2
     width: root.bugSize * 2.4
     height: root.bugSize * 2.4
-    radius: root.fontSize
-    color: "transparent"
-    border.color: root.accentColor
-    border.width: root.highlight ? 5 : 2
+
+    Art { anchors.fill: parent; sprite: "jar" }
 
     Text {
       anchors.horizontalCenter: parent.horizontalCenter
-      anchors.bottom: parent.bottom
-      anchors.bottomMargin: root.fontSize / 2
+      anchors.top: parent.bottom
+      anchors.topMargin: root.fontSize / 4
       text: "JAR"
       color: root.accentColor
       font.family: root.fontFamily
@@ -202,7 +188,7 @@ Item {
     bugId: "bigbug"
     objectName: "target-bigbug"
     visible: root.play === "drag"
-    size: root.bugSize * 1.6
+    size: root.bugSize * 1.4
     readonly property real homeX: root.width * 0.12
     readonly property real homeY: (root.height - height) / 2
     // Placed by assignment, not binding: a bound position would fight the drag.
@@ -289,6 +275,7 @@ Item {
     id: sneakyBug
     bugId: "sneaky"
     objectName: "target-sneaky"
+    look: "sneakyBug"
     visible: root.play === "sneaky"
     anchors.centerIn: parent
     size: root.bugSize * 1.3
