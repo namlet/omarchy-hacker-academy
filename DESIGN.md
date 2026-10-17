@@ -79,6 +79,8 @@ Quickshell's modules are compiled into the `quickshell` binary, and the shell's 
 - **UI and keyboard behaviour** in QML that doesn't import Quickshell or `qs.*` lives in `components/`, takes theme values as properties, is tested headless with `qmltestrunner` (simulated key holds and taps work), and is linted strictly with `qmllint`.
 - **Quickshell wiring** (`Panel.qml`) stays thin with no logic, and is checked by hand on a real Omarchy desktop: it can't be linted or tested outside the shell.
 
+- **Pixel art** is text in `Sprites.js` (one character per pixel, named by role so it takes the theme's colors), checked for shape by tests and by eye with `make preview`, which shows every sprite on a dark and a light theme.
+
 Rule: anything testable must not import Quickshell or `qs.*`. `make test` runs everything; CI runs it on every pull request in an Arch Linux container.
 
 ## Roadmap
