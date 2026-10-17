@@ -81,7 +81,8 @@ Item {
     WlrLayershell.layer: WlrLayer.Top
     // Keyboard missions hold the keyboard so a drifting pointer can't take it
     // (Omarchy focuses whatever is under the mouse); desktop missions let go.
-    WlrLayershell.keyboardFocus: view.holdKeyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+    WlrLayershell.keyboardFocus: view.keyboardFocus === "exclusive" ? WlrKeyboardFocus.Exclusive
+      : view.keyboardFocus === "none" ? WlrKeyboardFocus.None : WlrKeyboardFocus.OnDemand
 
     Rectangle {
       id: card

@@ -48,6 +48,11 @@ FocusScope {
   readonly property var step: root.finishedAll ? null : Engine.currentStep(root.missions, root.session)
   readonly property string stage: root.mission ? root.mission.stage : "center"
   readonly property bool holdKeyboard: root.mission ? root.mission.holdKeyboard : true
+  // How the window takes the keyboard: held for keyboard missions; never while the
+  // learner opens or closes a real window, so the pointer resting on this window
+  // can't pull focus away from the window that Win+W should close.
+  readonly property string keyboardFocus: root.holdKeyboard ? "exclusive"
+    : root.expectType === "window" ? "none" : "onDemand"
   // Desktop missions sit small in a corner, out of the way of the real windows.
   readonly property bool onDesktop: root.stage === "corner"
   readonly property string codename: root.session.codename || root.progress.codename

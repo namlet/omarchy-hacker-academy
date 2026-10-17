@@ -400,6 +400,19 @@ Item {
       verify(view.implicitWidth < keyboardWidth)
     }
 
+    function test_mission_three_never_takes_the_keyboard_from_the_learners_windows() {
+      startMissionTwo(0)
+      compare(view.keyboardFocus, "exclusive")
+      startMissionThree(0)
+      compare(view.keyboardFocus, "onDemand")
+      for (const step of [1, 2, 3, 4]) {
+        startMissionThree(step)
+        compare(view.keyboardFocus, "none", "step " + step)
+      }
+      startMissionThree(5)
+      compare(view.keyboardFocus, "onDemand")
+    }
+
     function test_mission_three_end_to_end() {
       startMissionThree(0)
       const w = view.implicitWidth, h = view.implicitHeight
