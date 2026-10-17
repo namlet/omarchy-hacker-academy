@@ -81,18 +81,57 @@ test("tapping a letter while holding shift keeps shift held", () => {
   assert.equal(state.taps, 1)
 })
 
-test("openwindow events parse, keeping commas in the title", () => {
-  const info = Model.parseOpenWindow({ name: "openwindow", data: "5d28,2,foot,Hello, world" })
-  assert.deepEqual(info, { address: "5d28", workspace: "2", appClass: "foot", title: "Hello, world" })
+test("key labels match what is printed on the keys", () => {
+  assert.equal(Model.keyLabel(KEY_A), "A")
+  assert.equal(Model.keyLabel(0x37), "7")
+  assert.equal(Model.keyLabel(0x01000003), "Backspace")
+  assert.equal(Model.keyLabel(0x01000004), "Enter")
+  assert.equal(Model.keyLabel(Model.KEY_SUPER_L), "Win")
+  assert.equal(Model.keyLabel(Model.KEY_META), "Win")
+  assert.equal(Model.keyLabel(0x01000030), "")
+})
+
+test("pressed keys are lifted by physical key, even when the release reports another code", () => {
+  let state = Model.keyDown(Model.initialPressedState(), Model.KEY_SHIFT, 50)
+  state = Model.keyDown(state, KEY_A, 38)
+  assert.deepEqual(Model.pressedLabels(state).sort(), ["A", "Shift"])
+  state = Model.keyUp(state, KEY_CAPSLOCK, 50)
+  assert.deepEqual(Model.pressedLabels(state), ["A"])
+  state = Model.keyUp(state, KEY_A, 38)
+  assert.deepEqual(Model.pressedLabels(state), [])
+})
+
+test("keys the keyboard doesn't show are ignored", () => {
+  const state = Model.keyDown(Model.initialPressedState(), 0x01000030, 67)
+  assert.deepEqual(Model.pressedLabels(state), [])
+})
+
+test("opening and closing windows are read from Hyprland's events", () => {
+  assert.deepEqual(Model.windowEvent({ name: "openwindow", data: "5d28,2,foot,Hello, world" }), { action: "open", address: "5d28", app: "terminal" })
+  assert.deepEqual(Model.windowEvent({ name: "openwindow", data: "5d29,1,chromium,New Tab" }), { action: "open", address: "5d29", app: "browser" })
+  assert.deepEqual(Model.windowEvent({ name: "closewindow", data: "5d28" }), { action: "close", address: "5d28", app: "" })
+  assert.equal(Model.windowEvent({ name: "closewindow", data: "0x5d28" }).address, "5d28")
+})
+
+test("the Academy needs its own workspace when anyone else's window is there", () => {
+  assert.equal(Model.needsOwnWorkspace([], []), false)
+  assert.equal(Model.needsOwnWorkspace(["0x5d28"], ["5d28"]), false)
+  assert.equal(Model.needsOwnWorkspace(["5d28", "0x77aa"], ["5d28"]), true)
 })
 
 test("other events and malformed data are ignored", () => {
-  assert.equal(Model.parseOpenWindow({ name: "closewindow", data: "5d28" }), null)
-  assert.equal(Model.parseOpenWindow({ name: "openwindow", data: "5d28,2" }), null)
-  assert.equal(Model.parseOpenWindow(null), null)
+  assert.equal(Model.windowEvent({ name: "activewindow", data: "foot,Hello" }), null)
+  assert.equal(Model.windowEvent({ name: "openwindow", data: "5d28,2" }), null)
+  assert.equal(Model.windowEvent({ name: "closewindow", data: "" }), null)
+  assert.equal(Model.windowEvent(null), null)
 })
 
-test("app label prefers the title, then the class", () => {
-  assert.equal(Model.appLabel({ appClass: "foot", title: "Terminal" }), "Terminal")
-  assert.equal(Model.appLabel({ appClass: "foot", title: "" }), "foot")
+test("terminals and browsers are recognised like Omarchy tags them", () => {
+  for (const c of ["Alacritty", "kitty", "com.mitchellh.ghostty", "foot", "org.omarchy.terminal", "TUI.float"])
+    assert.equal(Model.appKind(c), "terminal", c)
+  for (const c of ["chromium", "google-chrome", "brave-browser", "firefox", "zen", "librewolf"])
+    assert.equal(Model.appKind(c), "browser", c)
+  assert.equal(Model.appKind("org.omarchy.screensaver"), "screensaver")
+  for (const c of ["org.gnome.Nautilus", "footclient-ish", "chromium-app", ""])
+    assert.equal(Model.appKind(c), "", c)
 })

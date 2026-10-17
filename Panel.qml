@@ -1,14 +1,15 @@
 import QtQuick
-import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
 import "components"
-import "Model.js" as Model
+import "Engine.js" as Engine
 
-// Shell adapter: opens the coach panel and forwards Hyprland events.
-// No lesson logic here — it lives in Model.js and components/ where it is tested.
+// Shell adapter: shows the mission view, loads and saves progress, and places the
+// window for the current mission. No lesson logic here — it lives in Engine.js,
+// Missions.js, Model.js and components/, where it is tested.
 Item {
   id: root
 
@@ -16,24 +17,26 @@ Item {
   property var manifest: null
 
   property bool opened: false
-  property string lastWindow: ""
-  // Keyboard exercises hold the keyboard so a wandering pointer (Omarchy
-  // focuses whatever is under the mouse) can't take it away; desktop
-  // exercises will let go so real windows get keys. The skeleton is all
-  // keyboard practice.
-  property bool holdKeyboard: true
+
+  // Outside the plugin folder: the shell reloads plugins when files there change.
+  readonly property string progressPath:
+    (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/io.github.namlet.hacker-academy.json"
 
   function open(payloadJson) {
     root.opened = true
+    view.begin()
+    // Play on a workspace of its own, away from anyone else's windows.
+    const ws = Hyprland.focusedWorkspace
+    if (ws && view.needsOwnWorkspace(ws.toplevels.values.map(function(t) { return t.address })))
+      Hyprland.dispatch('hl.dsp.focus({ workspace = "empty" })')
     // The window maps after open() returns; take keyboard focus once it exists.
     Qt.callLater(function() {
-      if (root.opened) trainer.forceActiveFocus()
+      if (root.opened) view.focusTask()
     })
   }
 
   function close() {
     root.opened = false
-    root.lastWindow = ""
   }
 
   function dismiss() {
@@ -42,89 +45,69 @@ Item {
     else close()
   }
 
+  FileView {
+    id: progressFile
+    path: root.progressPath
+    atomicWrites: true
+    printErrors: false
+    onLoaded: { view.progress = Engine.parseProgress(progressFile.text()); view.begin() }
+    onLoadFailed: { view.progress = Engine.newProgress(); view.begin() }
+    onSaveFailed: (error) => console.warn("Hacker Academy: could not save progress to " + root.progressPath + " (error " + error + ")")
+  }
+
+  // Windows opening and closing on the real desktop, for missions played there.
   Connections {
     target: Hyprland
     enabled: root.opened
-
     function onRawEvent(event) {
-      var info = Model.parseOpenWindow(event)
-      if (info) root.lastWindow = Model.appLabel(info)
+      if (event) view.windowEvent({ name: String(event.name), data: String(event.data) })
     }
   }
 
   PanelWindow {
     visible: root.opened
-    anchors { bottom: true; right: true }
+    // Centered for missions inside the panel; a corner when the real desktop is the stage.
+    anchors {
+      bottom: view.stage === "corner"
+      right: view.stage === "corner"
+    }
     margins { bottom: Style.space(24); right: Style.space(24) }
     implicitWidth: card.implicitWidth
     implicitHeight: card.implicitHeight
     color: "transparent"
-    exclusionMode: ExclusionMode.Ignore
+    // Stay clear of the bar when sitting in a corner.
+    exclusionMode: ExclusionMode.Normal
     WlrLayershell.namespace: "hacker-academy"
     WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: root.holdKeyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
+    // Keyboard missions hold the keyboard so a drifting pointer can't take it
+    // (Omarchy focuses whatever is under the mouse); desktop missions let go.
+    WlrLayershell.keyboardFocus: view.keyboardFocus === "exclusive" ? WlrKeyboardFocus.Exclusive
+      : view.keyboardFocus === "none" ? WlrKeyboardFocus.None : WlrKeyboardFocus.OnDemand
 
     Rectangle {
       id: card
       anchors.fill: parent
-      implicitWidth: content.implicitWidth + Style.space(48)
-      implicitHeight: content.implicitHeight + Style.space(48)
+      implicitWidth: view.implicitWidth
+      implicitHeight: view.implicitHeight
       radius: Style.cornerRadius
       color: Color.popups.background
       border.color: Color.popups.border
       border.width: 2
 
-      MouseArea {
+      MissionView {
+        id: view
         anchors.fill: parent
-        onClicked: trainer.forceActiveFocus()
-      }
-
-      ColumnLayout {
-        id: content
-        anchors.centerIn: parent
-        spacing: Style.space(16)
-
-        Text {
-          Layout.alignment: Qt.AlignHCenter
-          text: "HACKER ACADEMY"
-          color: Color.accent
-          font.family: Style.font.family
-          font.pixelSize: Style.font.title
-          font.bold: true
-        }
-
-        KeyTrainer {
-          id: trainer
-          Layout.alignment: Qt.AlignHCenter
-          textColor: Color.popups.text
-          dimColor: Color.muted
-          accentColor: Color.accent
-          fontFamily: Style.font.family
-          fontSize: Style.font.body
-          onExitRequested: root.dismiss()
-        }
-
-        Text {
-          Layout.alignment: Qt.AlignHCenter
-          text: root.lastWindow ? "You opened " + root.lastWindow + "!" : "Open any window to see it here"
-          color: root.lastWindow ? Color.accent : Color.muted
-          font.family: Style.font.family
-          font.pixelSize: Style.font.body
-        }
-
-        Text {
-          Layout.alignment: Qt.AlignHCenter
-          text: "Esc or click here to close"
-          color: Color.muted
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
-
-          MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.dismiss()
-          }
-        }
+        focus: true
+        textColor: Color.popups.text
+        dimColor: Color.muted
+        accentColor: Color.accent
+        boltColor: Color.foreground
+        backgroundColor: Color.popups.background
+        fontFamily: Style.font.family
+        fontSize: Math.round(Style.font.body * 1.3)
+        hintClock: root.opened
+        onProgressSaved: (progress) => progressFile.setText(Engine.serializeProgress(progress))
+        onExitRequested: root.dismiss()
       }
     }
   }

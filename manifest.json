@@ -5,8 +5,19 @@
   "version": "0.0.1",
   "author": "Nathan Loyer",
   "description": "Learn to drive Omarchy by training as a white-hat hacker. Made for kids who have only used tablets, and for new users of any age.",
-  "kinds": ["panel"],
+  "kinds": [
+    "panel",
+    "bar-widget"
+  ],
   "entryPoints": {
-    "panel": "Panel.qml"
+    "panel": "Panel.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Hacker Academy",
+    "description": "Opens Hacker Academy",
+    "category": "Learning",
+    "allowMultiple": false,
+    "defaultSection": "right"
   }
 }
