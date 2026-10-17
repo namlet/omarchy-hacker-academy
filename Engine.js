@@ -59,12 +59,19 @@ function rememberStep(progress, session) {
 }
 
 // The session to start with: the remembered step if it belongs to the next mission, else its start.
-function resume(missions, progress) {
+// previous (optional) is the session before, whose windows still count when it was the same
+// mission. A step that closes a window needs one the learner opened; without one (say,
+// after logging out) it resumes a step earlier, where that window gets opened.
+function resume(missions, progress, previous) {
   var index = nextMission(missions, progress)
   var session = startMission(index)
+  if (previous && previous.mission === index && previous.windows) session.windows = previous.windows
   var c = progress.current
   if (c && c.mission === index && index < missions.length && c.step < missions[index].steps.length) {
-    session.step = c.step
+    var expect = missions[index].steps[c.step].expect
+    var closeWithout = expect.type === "window" && expect.action === "close"
+      && !session.windows.some(function(w) { return w.app === expect.app })
+    session.step = closeWithout && c.step > 0 ? c.step - 1 : c.step
     session.codename = c.codename
   }
   return session
@@ -77,8 +84,9 @@ function isValidCodename(name) {
 
 // ---------------------------------------------------------------- a mission in play
 
+// windows: the learner's own windows, opened during this mission ({address, app}).
 function startMission(index) {
-  return { mission: index, step: 0, count: 0, hits: [], typed: "", idleMs: 0, hint: 0, codename: "", celebrating: false, done: false }
+  return { mission: index, step: 0, count: 0, hits: [], typed: "", idleMs: 0, hint: 0, codename: "", windows: [], celebrating: false, done: false }
 }
 
 function currentStep(missions, session) {
@@ -93,6 +101,7 @@ function advance(missions, session) {
     step: last ? session.step : session.step + 1,
     count: 0, hits: [], typed: "", idleMs: 0, hint: 0,
     codename: session.codename,
+    windows: session.windows,
     celebrating: false,
     done: last
   }
@@ -114,11 +123,13 @@ function finishCelebration(missions, session) {
 //      | {type: "pointer", action: "hover" | "click" | "rightclick" | "drop", id, target?}
 //      | {type: "held", key, ms}   a hold key has been down this long
 //      | {type: "tap", key}        a hold key was pressed and let go quickly, alone
-//      | {type: "window", action: "open" | "close", app}   a real window on the desktop
+//      | {type: "window", action: "open" | "close", address, app}   a real window on the desktop
 // Key events may carry text (what the key typed) and shift (Shift was held).
 // A button step may also accept a key (expect.key), so Enter works before the mouse is taught.
 // Only progress resets the help timer, so mashing other keys still brings hints.
 function handle(missions, session, event) {
+  var closedOwn = event.type === "window" && event.action === "close" ? ownWindow(session, event.address) : null
+  if (event.type === "window") session = trackWindow(session, event)
   var step = currentStep(missions, session)
   if (!step || session.done || session.celebrating) return session
   var expect = step.expect
@@ -147,11 +158,25 @@ function handle(missions, session, event) {
     return celebrate(session, { typed: event.key })
   if (expect.type === "tap" && event.type === "tap" && event.key === expect.key)
     return celebrate(session, {})
-  // A window step names the action and, for opening, which kind of app.
-  if (expect.type === "window" && event.type === "window" && event.action === expect.action
-      && (expect.app === undefined || event.app === expect.app))
-    return celebrate(session, {})
+  // Opening counts for the right kind of app; closing only for a window the learner
+  // opened, so closing someone else's work never counts.
+  if (expect.type === "window" && event.type === "window" && event.action === expect.action) {
+    if (event.action === "open" && event.app === expect.app) return celebrate(session, {})
+    if (event.action === "close" && closedOwn && closedOwn.app === expect.app) return celebrate(session, {})
+  }
   return session
+}
+
+function ownWindow(session, address) {
+  for (var i = 0; i < session.windows.length; i++)
+    if (session.windows[i].address === address) return session.windows[i]
+  return null
+}
+
+function trackWindow(session, event) {
+  var others = session.windows.filter(function(w) { return w.address !== event.address })
+  var windows = event.action === "open" ? others.concat([{ address: event.address, app: event.app }]) : others
+  return withChanges(session, { windows: windows })
 }
 
 function isLetterOrDigit(label) {

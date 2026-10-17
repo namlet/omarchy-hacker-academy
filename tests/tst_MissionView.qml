@@ -388,8 +388,8 @@ Item {
       wait(20)
     }
 
-    function windowOpens(appClass) { view.windowEvent({ name: "openwindow", data: "5d28,1," + appClass + ",A window" }) }
-    function windowCloses() { view.windowEvent({ name: "closewindow", data: "5d28" }) }
+    function windowOpens(address, appClass) { view.windowEvent({ name: "openwindow", data: address + ",1," + appClass + ",A window" }) }
+    function windowCloses(address) { view.windowEvent({ name: "closewindow", data: address }) }
 
     function test_mission_three_sits_small_in_a_corner_and_lets_go_of_the_keyboard() {
       startMissionTwo(0)
@@ -408,23 +408,25 @@ Item {
 
       verify(findChild(view, "combo").visible)
       verify(findChild(view, "combo-Win").visible && findChild(view, "combo-Enter").visible)
-      windowOpens("chromium")
-      windowCloses()
+      windowOpens("b0", "chromium")
+      windowCloses("b0")
       verify(!view.celebrating)
-      windowOpens("foot")
+      windowOpens("t1", "foot")
       waitForCelebration()
 
       compare(findChild(view, "instruction").text, "Close the terminal.")
-      windowCloses()
+      windowCloses("grownups")
+      verify(!view.celebrating)
+      windowCloses("t1")
       waitForCelebration()
 
-      windowOpens("foot")
+      windowOpens("t2", "foot")
       verify(!view.celebrating)
       verify(findChild(view, "combo-Shift").visible && findChild(view, "combo-B").visible)
-      windowOpens("chromium")
+      windowOpens("b1", "chromium")
       waitForCelebration()
 
-      windowCloses()
+      windowCloses("b1")
       waitForCelebration()
 
       verify(findChild(view, "badge").visible)
@@ -436,13 +438,25 @@ Item {
 
     function test_mission_three_ignores_the_screensaver_coming_and_going() {
       startMissionThree(1)
-      view.windowEvent({ name: "openwindow", data: "aa01,1,org.omarchy.screensaver,Screensaver" })
+      windowOpens("aa01", "org.omarchy.screensaver")
       verify(!view.celebrating)
-      windowOpens("foot")
+      windowOpens("t1", "foot")
       waitForCelebration()
-      view.windowEvent({ name: "closewindow", data: "aa01" })
+      windowCloses("aa01")
       verify(!view.celebrating)
-      windowCloses()
+      windowCloses("t1")
+      verify(view.celebrating)
+    }
+
+    function test_reopening_mid_mission_keeps_the_learners_windows() {
+      startMissionThree(1)
+      windowOpens("t1", "foot")
+      waitForCelebration()
+      verify(view.needsOwnWorkspace(["0x5d28"]), "a grown-up's window means moving away")
+      verify(!view.needsOwnWorkspace(["0xt1"]), "the learner's own terminal is fine")
+      view.begin()
+      compare(view.session.step, 2)
+      windowCloses("t1")
       verify(view.celebrating)
     }
 

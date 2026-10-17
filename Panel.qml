@@ -25,6 +25,10 @@ Item {
   function open(payloadJson) {
     root.opened = true
     view.begin()
+    // Play on a workspace of its own, away from anyone else's windows.
+    const ws = Hyprland.focusedWorkspace
+    if (ws && view.needsOwnWorkspace(ws.toplevels.values.map(function(t) { return t.address })))
+      Hyprland.dispatch('hl.dsp.focus({ workspace = "empty" })')
     // The window maps after open() returns; take keyboard focus once it exists.
     Qt.callLater(function() {
       if (root.opened) view.focusTask()

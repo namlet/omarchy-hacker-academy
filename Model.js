@@ -123,6 +123,11 @@ function appKind(appClass) {
   return ""
 }
 
+// Hyprland writes window addresses with "0x" in some places and without in others.
+function windowAddress(address) {
+  return String(address).replace(/^0x/, "")
+}
+
 // A window opening or closing, from Hyprland's raw events; null for anything else.
 // openwindow data is "address,workspace,class,title" (the title may contain commas);
 // closewindow data is "address".
@@ -131,10 +136,16 @@ function windowEvent(event) {
   var name = String(event.name)
   var parts = String(event.data || "").split(",")
   if (name === "openwindow" && parts.length >= 4)
-    return { action: "open", address: parts[0], app: appKind(parts[2]) }
+    return { action: "open", address: windowAddress(parts[0]), app: appKind(parts[2]) }
   if (name === "closewindow" && parts[0] !== "")
-    return { action: "close", address: parts[0], app: "" }
+    return { action: "close", address: windowAddress(parts[0]), app: "" }
   return null
+}
+
+// The Academy plays on a workspace of its own, so a learner practising Win + W can't
+// close a grown-up's work: true when the workspace holds any window the learner didn't open.
+function needsOwnWorkspace(workspaceAddresses, learnerAddresses) {
+  return workspaceAddresses.some(function(a) { return learnerAddresses.indexOf(windowAddress(a)) === -1 })
 }
 
 if (typeof module !== "undefined") {
@@ -157,6 +168,7 @@ if (typeof module !== "undefined") {
     keyUp: keyUp,
     pressedLabels: pressedLabels,
     appKind: appKind,
-    windowEvent: windowEvent
+    windowEvent: windowEvent,
+    needsOwnWorkspace: needsOwnWorkspace
   }
 }

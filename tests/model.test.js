@@ -110,6 +110,13 @@ test("opening and closing windows are read from Hyprland's events", () => {
   assert.deepEqual(Model.windowEvent({ name: "openwindow", data: "5d28,2,foot,Hello, world" }), { action: "open", address: "5d28", app: "terminal" })
   assert.deepEqual(Model.windowEvent({ name: "openwindow", data: "5d29,1,chromium,New Tab" }), { action: "open", address: "5d29", app: "browser" })
   assert.deepEqual(Model.windowEvent({ name: "closewindow", data: "5d28" }), { action: "close", address: "5d28", app: "" })
+  assert.equal(Model.windowEvent({ name: "closewindow", data: "0x5d28" }).address, "5d28")
+})
+
+test("the Academy needs its own workspace when anyone else's window is there", () => {
+  assert.equal(Model.needsOwnWorkspace([], []), false)
+  assert.equal(Model.needsOwnWorkspace(["0x5d28"], ["5d28"]), false)
+  assert.equal(Model.needsOwnWorkspace(["5d28", "0x77aa"], ["5d28"]), true)
 })
 
 test("other events and malformed data are ignored", () => {

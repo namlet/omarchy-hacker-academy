@@ -53,6 +53,7 @@ Graduation earns the White Hat rank and a printable certificate with the learner
 - **An on-screen keyboard** lights up keys as they are held and tapped, labelled like the learner's keys (Super is printed "Win" on many keyboards).
 - **Progress is saved** to `$XDG_STATE_HOME/io.github.namlet.hacker-academy.json` (outside the plugin folder, which the shell watches for code changes), so it survives logging out. A settings screen lets a grown-up skip a mission or reset progress.
 - **Opened from a top-bar button,** so learners never need a command.
+- **Plays on a workspace of its own.** When the Academy opens on a workspace holding anyone else's windows, it moves to an empty one, so a learner practising Win + W can't close a grown-up's work. Closing steps only count windows the learner opened.
 - Disruptive missions (closing all windows, logging out) are meant for the learner's own account; the Academy warns first. Omarchy's Ctrl + Alt + Delete closes every app window but not the Academy, which is part of the shell like the top bar, so the mission can watch the windows close.
 
 ## Stack

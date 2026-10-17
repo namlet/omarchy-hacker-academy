@@ -6,7 +6,8 @@
 // Bolt's hint, keys lit on the keyboard, then the Mentor's demo.
 //
 // From mission 3 the real desktop is the stage: the Academy waits in a corner, lets
-// go of the keyboard, and watches windows open and close. Omarchy's shortcuts never
+// go of the keyboard, and watches windows open and close. Closing only counts for
+// windows the learner opened in the mission. Omarchy's shortcuts never
 // reach the Academy, so those steps show their keys (combo) instead of a keyboard.
 
 var MISSIONS = [
@@ -259,7 +260,7 @@ var MISSIONS = [
         speaker: "bolt",
         lines: ["Oops, that window is in my way!", "Win and W closes a window."],
         combo: ["Win", "W"],
-        expect: { type: "window", action: "close", label: "Close the terminal." },
+        expect: { type: "window", action: "close", app: "terminal", label: "Close the terminal." },
         success: { speaker: "bolt", line: "Poof! It's gone." },
         hint: {
           bolt: "Hold Win, then tap W.",
@@ -283,7 +284,7 @@ var MISSIONS = [
         speaker: "mentor",
         lines: ["Videos later, Bolt.", "Close the browser too."],
         combo: ["Win", "W"],
-        expect: { type: "window", action: "close", label: "Close the browser." },
+        expect: { type: "window", action: "close", app: "browser", label: "Close the browser." },
         success: { speaker: "bolt", line: "Aww. Okay, fine." },
         hint: {
           bolt: "Same trick as before. Win and W!",
