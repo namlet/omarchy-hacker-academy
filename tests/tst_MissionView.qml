@@ -21,6 +21,7 @@ Item {
     when: windowShown
 
     function init() {
+      view.loginSession = ""
       view.progress = Engine.newProgress()
       view.begin()
       saved.clear()
@@ -184,7 +185,7 @@ Item {
       view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2], current: null }
       view.begin()
       compare([view.session.mission, view.session.step], [3, 0])
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8], current: null }
       view.begin()
       verify(view.finishedAll)
       verify(findChild(view, "comingSoon").visible)
@@ -688,6 +689,55 @@ Item {
       verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(7) !== -1)
     }
 
+    // ------------------------------------------------------------ mission 8
+
+    function startMissionEight(step, login) {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7], current: { mission: 8, step: step, codename: "Zero", login: login || "" } }
+      view.begin()
+      wait(20)
+    }
+
+    function test_mission_eight_locks_and_unlocks() {
+      view.loginSession = "47"
+      startMissionEight(0)
+      const w = view.implicitWidth, h = view.implicitHeight
+      clickItem("button-ready")
+      waitForCelebration()
+
+      verify(view.watchesLock)
+      compare(view.keyboardFocus, "none", "the lock screen gets the keys")
+      view.lockState(false)
+      verify(!view.celebrating, "not locked yet")
+      view.lockState(true)
+      waitForCelebration()
+      view.lockState(true)
+      verify(!view.celebrating, "still locked")
+      view.lockState(false)
+      waitForCelebration()
+      verify(!view.watchesLock)
+      menu(true)
+      waitForCelebration()
+      menu(false)
+      waitForCelebration()
+
+      compare(view.expectType, "login")
+      compare(saved.signalArguments[saved.count - 1][0].current.login, "47", "the step remembers this login")
+      view.arrive()
+      verify(!view.celebrating, "the same login: not logged out yet")
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+    }
+
+    function test_mission_eight_resumes_after_logging_back_in() {
+      view.loginSession = "52"
+      startMissionEight(5, "47")
+      compare(view.expectType, "login")
+      view.arrive()
+      waitForCelebration()
+      clickItem("button-finish")
+      waitForCelebration()
+      verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(8) !== -1)
+    }
+
     function test_mission_three_keys_light_up_when_help_grows() {
       startMissionThree(1)
       verify(!findChild(view, "combo-Win").lit)
@@ -736,7 +786,7 @@ Item {
     }
 
     function test_the_map_shows_the_campaign_when_every_mission_is_done() {
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8], current: null }
       view.begin()
       wait(20)
       verify(findChild(view, "campaignMap").visible)
@@ -775,7 +825,7 @@ Item {
     }
 
     function test_nothing_to_skip_once_every_mission_is_done() {
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8], current: null }
       view.begin()
       clickItem("settingsButton")
       verify(!findChild(view, "settings-skip").visible)

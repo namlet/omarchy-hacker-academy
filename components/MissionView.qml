@@ -35,6 +35,8 @@ FocusScope {
   // one nearby. The panel picks them when it opens; 0 until then.
   property int homeRoom: 0
   property int secretRoom: 0
+  // This login session (XDG_SESSION_ID), so a step can tell the learner logged out and back in.
+  property string loginSession: ""
   property var keys: Model.initialPressedState()
   property bool showingSettings: false
   property bool confirmingReset: false
@@ -57,11 +59,13 @@ FocusScope {
   // the pointer resting on this window can't pull focus away from them.
   readonly property string keyboardFocus: root.desktopTask ? "none" : "exclusive"
   // Steps done on the real desktop with Omarchy's shortcuts.
-  readonly property bool desktopTask: ["window", "focus", "fullscreen", "swap", "float", "move", "resize", "workspace", "carry", "menu"].indexOf(root.expectType) !== -1
+  readonly property bool desktopTask: ["window", "focus", "fullscreen", "swap", "float", "move", "resize", "workspace", "carry", "menu", "lock", "login"].indexOf(root.expectType) !== -1
   // Which step is being played, as text that changes whenever the step does.
   readonly property string stepKey: root.session.mission + ":" + root.session.step
   // Steps whose action sends no event: the panel reports window positions meanwhile.
   readonly property bool watchesLayout: ["swap", "move", "resize"].indexOf(root.expectType) !== -1
+  // The screen locking sends no event either: the panel asks while a step needs it.
+  readonly property bool watchesLock: root.expectType === "lock"
   // Desktop missions sit small in a corner, out of the way of the real windows.
   readonly property bool onDesktop: root.stage === "corner"
   readonly property string codename: root.session.codename || root.progress.codename
@@ -124,6 +128,16 @@ FocusScope {
     if (w) root.handle({ type: "window", action: w.action, address: w.address, app: w.app, on: w.on, room: room })
   }
 
+  // The Academy opened: in another login than the remembered step, a log-out step is done.
+  function arrive() {
+    root.handle({ type: "login", id: root.loginSession })
+  }
+
+  // Whether the screen is locked, asked while a step needs it.
+  function lockState(on) {
+    root.handle({ type: "lock", on: on })
+  }
+
   // Where a window is: {address, at: [x, y], size: [w, h], floating}, from Hyprland.
   // The numbers are copied: Quickshell's lists change in place when it refreshes, which
   // would move a step's starting point along with the window.
@@ -149,7 +163,7 @@ FocusScope {
       root.progressSaved(root.progress)
       root.begin()
     } else {
-      root.progress = Engine.rememberStep(root.progress, root.session)
+      root.progress = Engine.rememberStep(root.progress, root.session, root.loginSession)
       root.progressSaved(root.progress)
       root.focusTask()
     }

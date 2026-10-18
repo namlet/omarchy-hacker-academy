@@ -60,7 +60,7 @@ Graduation earns the White Hat rank and a printable certificate with the learner
 
 ## Stack
 
-A third-party Omarchy shell plugin: QML for Quickshell, with logic in QML's built-in JavaScript. Desktop events come from `Quickshell.Hyprland` (the `onRawEvent` stream Omarchy's own shell uses). No helper process and no dependencies beyond what Omarchy ships. Installed with `omarchy plugin add <git-url>`; aimed at the Kids category of the Omarchy plugin marketplace.
+A third-party Omarchy shell plugin: QML for Quickshell, with logic in QML's built-in JavaScript. Desktop events come from `Quickshell.Hyprland` (the `onRawEvent` stream Omarchy's own shell uses). Locking sends no event, so during the lock steps the Academy asks Omarchy's lock screen once a second (`omarchy-shell lock isLocked`). Logging out is noticed by the login session: a remembered step stores `XDG_SESSION_ID`, and opening the Academy in a different one finishes the log-out step. No helper process and no dependencies beyond what Omarchy ships. Installed with `omarchy plugin add <git-url>`; aimed at the Kids category of the Omarchy plugin marketplace.
 
 Considered and rejected: a web app with a local event helper (two moving parts, not a plugin, no theming) and a Python/GTK app (doesn't fit Omarchy's plugin model).
 
@@ -98,6 +98,5 @@ Rule: anything testable must not import Quickshell or `qs.*`. `make test` runs e
 - Final character names.
 - Keyboard labels: detect the layout, or ask once what the Super key says?
 - Where progress is stored so it survives logging out.
-- How the lock and log-out lessons resume cleanly.
 - Translation: English first; structure strings for translation from the start?
 - Later: a classroom mode for shared computers (skip the log-out step, reset progress between students).

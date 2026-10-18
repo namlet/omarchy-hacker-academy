@@ -11,7 +11,8 @@ var CODENAME_MAX = 16
 // ---------------------------------------------------------------- progress
 
 // completed: finished mission numbers. current: where an unfinished mission was left
-// ({mission, step, codename}), so closing the Academy mid-mission resumes there.
+// ({mission, step, codename, login}), so closing the Academy mid-mission resumes there.
+// login is the login session that got there, so a step can tell the learner logged out.
 // settings: grown-up choices, kept when progress is reset.
 function newProgress(settings) {
   return { version: PROGRESS_VERSION, codename: "", completed: [], current: null, settings: settings || defaultSettings() }
@@ -49,7 +50,11 @@ function parseProgress(text) {
   var codename = typeof p.codename === "string" && isValidCodename(p.codename) ? p.codename.trim() : ""
   var c = p.current
   var current = c && Number.isInteger(c.mission) && c.mission >= 0 && Number.isInteger(c.step) && c.step >= 0
-    ? { mission: c.mission, step: c.step, codename: typeof c.codename === "string" && isValidCodename(c.codename) ? c.codename.trim() : "" }
+    ? {
+        mission: c.mission, step: c.step,
+        codename: typeof c.codename === "string" && isValidCodename(c.codename) ? c.codename.trim() : "",
+        login: typeof c.login === "string" && /^[A-Za-z0-9_-]{1,32}$/.test(c.login) ? c.login : ""
+      }
     : null
   return { version: PROGRESS_VERSION, codename: codename, completed: completed, current: current, settings: settingsOf(p) }
 }
@@ -71,12 +76,13 @@ function completeMission(progress, index, codename) {
 }
 
 // Remember the step a learner reached, so they can close the Academy and come back.
-function rememberStep(progress, session) {
+// login: the login session it happened in (XDG_SESSION_ID).
+function rememberStep(progress, session, login) {
   return {
     version: PROGRESS_VERSION,
     codename: progress.codename,
     completed: progress.completed,
-    current: { mission: session.mission, step: session.step, codename: session.codename },
+    current: { mission: session.mission, step: session.step, codename: session.codename, login: login || "" },
     settings: settingsOf(progress)
   }
 }
@@ -151,6 +157,7 @@ function resume(missions, progress, previous) {
     }
     session.step = step
     session.codename = c.codename
+    session.login = c.login || ""
   }
   return session
 }
@@ -163,8 +170,9 @@ function isValidCodename(name) {
 // ---------------------------------------------------------------- a mission in play
 
 // windows: the learner's own windows, opened during this mission ({address, app}).
+// login: the login session the remembered step was reached in.
 function startMission(index) {
-  return { mission: index, step: 0, count: 0, hits: [], typed: "", idleMs: 0, hint: 0, codename: "", windows: [], focused: "", layout: {}, stepStart: {}, celebrating: false, done: false }
+  return { mission: index, step: 0, count: 0, hits: [], typed: "", idleMs: 0, hint: 0, codename: "", login: "", windows: [], focused: "", layout: {}, stepStart: {}, celebrating: false, done: false }
 }
 
 function currentStep(missions, session) {
@@ -179,6 +187,7 @@ function advance(missions, session) {
     step: last ? session.step : session.step + 1,
     count: 0, hits: [], typed: "", idleMs: 0, hint: 0,
     codename: session.codename,
+    login: session.login,
     windows: session.windows,
     focused: session.focused,
     layout: session.layout,
@@ -205,6 +214,8 @@ function finishCelebration(missions, session) {
 //      | {type: "held", key, ms}   a hold key has been down this long
 //      | {type: "tap", key}        a hold key was pressed and let go quickly, alone
 //      | {type: "window", action: "open" | "close", address, app}   a real window on the desktop
+//      | {type: "lock", on}            whether the screen is locked
+//      | {type: "login", id}           the Academy opened in this login session
 // Key events may carry text (what the key typed) and shift (Shift was held).
 // A button step may also accept a key (expect.key), so Enter works before the mouse is taught.
 // Only progress resets the help timer, so mashing other keys still brings hints.
@@ -276,6 +287,12 @@ function handle(missions, session, event) {
   // learner's windows are; each step compares them with where they were when it began.
   if (event.type === "window" && event.action === "geometry" && ownWindow(session, event.address)
       && ["swap", "move", "resize"].indexOf(expect.type) !== -1 && layoutChanged(expect.type, session.stepStart[event.address], event))
+    return celebrate(session, {})
+  // The screen locked (or unlocked again). The view reports the state, not a change.
+  if (expect.type === "lock" && event.type === "lock" && event.on === expect.on)
+    return celebrate(session, {})
+  // Logged out and back in: the step was reached in one login, and the Academy opened in another.
+  if (expect.type === "login" && event.type === "login" && session.login && event.id && event.id !== session.login)
     return celebrate(session, {})
   // Full screen on (or off) for the learner's window in the spotlight.
   if (expect.type === "fullscreen" && event.type === "window" && event.action === "fullscreen"
