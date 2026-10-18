@@ -12,6 +12,7 @@ Item {
   property color textColor: "white"
   property color dimColor: "gray"
   property color accentColor: "orange"
+  property color pressedTextColor: "black"
   property string fontFamily: "monospace"
   property real unit: 28
 
@@ -54,7 +55,7 @@ Item {
             objectName: "key-" + key.label
             width: key.modelData[1] * root.unit + (key.modelData[1] - 1) * root.gap
             height: root.unit
-            radius: root.unit * 0.18
+            radius: root.unit * 0.06
             color: key.down ? root.accentColor : "transparent"
             border.color: key.hinted || key.down ? root.accentColor : root.dimColor
             border.width: key.hinted ? 3 : 1
@@ -62,7 +63,7 @@ Item {
             Text {
               anchors.centerIn: parent
               text: key.label
-              color: key.down ? "black" : (key.hinted ? root.accentColor : root.textColor)
+              color: key.down ? root.pressedTextColor : (key.hinted ? root.accentColor : root.textColor)
               font.family: root.fontFamily
               font.pixelSize: root.unit * 0.36
               font.bold: key.hinted

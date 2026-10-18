@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import qs.Commons
 import "components"
 import "Engine.js" as Engine
+import "Theme.js" as Theme
 
 // Shell adapter: shows the mission view, loads and saves progress, and places the
 // window for the current mission. No lesson logic here — it lives in Engine.js,
@@ -45,6 +46,28 @@ Item {
     else close()
   }
 
+  // The theme's full color list (green, yellow, darker backgrounds), which the shell's
+  // Color doesn't carry. Reread when the shell's colors change, i.e. on a theme switch.
+  property string themeColors: ""
+  readonly property var academyTheme: Theme.palette(Theme.parseColors(root.themeColors), {
+    background: String(Color.background), foreground: String(Color.foreground), accent: String(Color.accent),
+    urgent: String(Color.urgent), muted: String(Color.muted)
+  })
+
+  FileView {
+    id: colorsFile
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/colors.toml"
+    printErrors: false
+    onLoaded: root.themeColors = colorsFile.text()
+    onLoadFailed: root.themeColors = ""
+  }
+
+  Connections {
+    target: Color
+    function onAccentChanged() { colorsFile.reload() }
+    function onBackgroundChanged() { colorsFile.reload() }
+  }
+
   FileView {
     id: progressFile
     path: root.progressPath
@@ -72,8 +95,8 @@ Item {
       right: view.stage === "corner"
     }
     margins { bottom: Style.space(24); right: Style.space(24) }
-    implicitWidth: card.implicitWidth
-    implicitHeight: card.implicitHeight
+    implicitWidth: view.implicitWidth
+    implicitHeight: view.implicitHeight
     color: "transparent"
     // Stay clear of the bar when sitting in a corner.
     exclusionMode: ExclusionMode.Normal
@@ -84,31 +107,16 @@ Item {
     WlrLayershell.keyboardFocus: view.keyboardFocus === "exclusive" ? WlrKeyboardFocus.Exclusive
       : view.keyboardFocus === "none" ? WlrKeyboardFocus.None : WlrKeyboardFocus.OnDemand
 
-    Rectangle {
-      id: card
+    MissionView {
+      id: view
       anchors.fill: parent
-      implicitWidth: view.implicitWidth
-      implicitHeight: view.implicitHeight
-      radius: Style.cornerRadius
-      color: Color.popups.background
-      border.color: Color.popups.border
-      border.width: 2
-
-      MissionView {
-        id: view
-        anchors.fill: parent
-        focus: true
-        textColor: Color.popups.text
-        dimColor: Color.muted
-        accentColor: Color.accent
-        boltColor: Color.foreground
-        backgroundColor: Color.popups.background
-        fontFamily: Style.font.family
-        fontSize: Math.round(Style.font.body * 1.3)
-        hintClock: root.opened
-        onProgressSaved: (progress) => progressFile.setText(Engine.serializeProgress(progress))
-        onExitRequested: root.dismiss()
-      }
+      focus: true
+      theme: root.academyTheme
+      fontFamily: Style.font.family
+      fontSize: Math.round(Style.font.body * 1.3)
+      hintClock: root.opened
+      onProgressSaved: (progress) => progressFile.setText(Engine.serializeProgress(progress))
+      onExitRequested: root.dismiss()
     }
   }
 }

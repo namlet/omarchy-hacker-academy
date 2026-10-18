@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import "../Theme.js" as Theme
 
 // Mission 1's play area: things to hover, click, drag, scroll to, and right-click.
 // `play` picks the layout; caught targets (`hits`) disappear; `highlight` makes
@@ -11,11 +12,9 @@ Item {
   property string play: ""
   property var hits: []
   property bool highlight: false
-  property color textColor: "white"
-  property color dimColor: "gray"
-  property color accentColor: "orange"
-  property color boltColor: "deepskyblue"
-  property color backgroundColor: "black"
+  property var theme: Theme.DEFAULT_PALETTE
+  // The character colors setting: "classic" or "theme".
+  property string mode: "classic"
   property string fontFamily: "monospace"
   property int fontSize: 16
   property string keepScrollingText: "Keep scrolling down."
@@ -38,15 +37,12 @@ Item {
     scroller.contentY = 0
   }
 
-  // A sprite in the theme's colors that pulses while the learner needs help.
+  // A sprite that pulses while the learner needs help.
   component Art: PixelSprite {
     id: art
     property bool glowing: root.highlight
-    lineColor: root.textColor
-    boltColor: root.boltColor
-    accentColor: root.accentColor
-    dimColor: root.dimColor
-    backgroundColor: root.backgroundColor
+    theme: root.theme
+    mode: root.mode
 
     SequentialAnimation on opacity {
       running: art.glowing
@@ -176,7 +172,7 @@ Item {
       anchors.top: parent.bottom
       anchors.topMargin: root.fontSize / 4
       text: "JAR"
-      color: root.accentColor
+      color: root.theme.rank
       font.family: root.fontFamily
       font.pixelSize: root.fontSize
       font.bold: true
@@ -241,7 +237,7 @@ Item {
       anchors.horizontalCenter: parent.horizontalCenter
       y: root.fontSize
       text: "↓  " + root.keepScrollingText + "  ↓"
-      color: root.dimColor
+      color: root.theme.quiet
       font.family: root.fontFamily
       font.pixelSize: root.fontSize * 1.2
     }
@@ -250,7 +246,7 @@ Item {
       anchors.horizontalCenter: parent.horizontalCenter
       y: scroller.height * 1.4
       text: "↓  " + root.keepScrollingText + "  ↓"
-      color: root.dimColor
+      color: root.theme.quiet
       font.family: root.fontFamily
       font.pixelSize: root.fontSize * 1.2
     }

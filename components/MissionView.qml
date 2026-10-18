@@ -4,14 +4,16 @@ import QtQuick
 import "../Engine.js" as Engine
 import "../Missions.js" as Missions
 import "../Model.js" as Model
+import "../Theme.js" as Theme
 
-// Plays missions: the speaker and lines, the task, a short success moment after each
-// step, help that grows while the learner is stuck, the on-screen keyboard, and a
-// settings screen for grown-ups. No Quickshell imports; the panel passes in theme
-// values, saves progress, and forwards Hyprland's window events.
+// Plays missions in a terminal-style window: a title bar, the progress strip, the
+// mission header, who's talking, the task, and a key bar. Rank-ups get their own
+// moment, settings and the campaign map take the body's place. No Quickshell
+// imports; the panel passes in the theme, saves progress, and forwards Hyprland's
+// window events.
 //
 // The size is fixed and every area keeps its space, so nothing jumps when hints
-// or the keyboard appear.
+// or the keyboard appear. Desktop missions use a smaller window in a corner.
 FocusScope {
   id: root
 
@@ -20,11 +22,7 @@ FocusScope {
   property bool hintClock: true
   property int celebrationMs: 2000
 
-  property color textColor: "white"
-  property color dimColor: "gray"
-  property color accentColor: "orange"
-  property color boltColor: "deepskyblue"
-  property color backgroundColor: "black"
+  property var theme: Theme.DEFAULT_PALETTE
   property string fontFamily: "monospace"
   property int fontSize: 16
 
@@ -42,6 +40,8 @@ FocusScope {
   property real shiftHeldMs: 0
   property bool letGoEarly: false
   readonly property int tapMaxMs: 600
+  // The blinking cursor after what's being said.
+  property bool caretOn: true
 
   readonly property bool finishedAll: root.session.mission >= root.missions.length
   readonly property var mission: root.finishedAll ? null : root.missions[root.session.mission]
@@ -63,9 +63,20 @@ FocusScope {
   // The keyboard picture only shows when keys are the task, or a hint lights one.
   readonly property bool keyboardShown: root.step !== null && !root.showingSettings
     && (root.keyTask || (root.session.hint >= 2 && root.step.hint.keys.length > 0))
+  readonly property string characterColors: Engine.settingsOf(root.progress).characterColors
 
-  readonly property real unit: root.fontSize * 2.4
-  readonly property real pad: root.fontSize * 1.5
+  // Ranks and missions, for the progress strip, title bar, and map.
+  readonly property var campaign: Engine.campaignView(Missions.CAMPAIGN, root.progress, root.finishedAll ? -1 : root.session.mission)
+  readonly property int rankIndex: Engine.rankIndex(Missions.CAMPAIGN, root.progress)
+  readonly property string rank: root.rankIndex >= 0 ? Missions.CAMPAIGN.ranks[root.rankIndex].name : ""
+  // A step that awards a rank is shown as the rank-up moment.
+  readonly property bool rankUp: root.step !== null && root.step.badge !== undefined && !root.showingSettings
+  readonly property string speaker: root.step ? (root.celebrating ? root.step.success.speaker : root.step.speaker) : "mentor"
+
+  readonly property real f: root.fontSize
+  readonly property real pad: root.f * (root.onDesktop ? 0.9 : 1.3)
+  readonly property real windowWidth: root.f * (root.onDesktop ? 28 : 46)
+  readonly property real bodyHeight: root.f * (root.onDesktop ? 15.5 : 32)
 
   // Start (or continue) at the first mission not yet completed.
   function begin() {
@@ -155,13 +166,24 @@ FocusScope {
 
   function resetProgress() {
     if (!root.confirmingReset) { root.confirmingReset = true; return }
-    root.progress = Engine.newProgress()
+    root.progress = Engine.resetProgress(root.progress)
     root.progressSaved(root.progress)
     root.begin()
   }
 
-  implicitWidth: column.width + root.pad * 2
-  implicitHeight: column.height + root.pad * 2
+  function toggleCharacterColors() {
+    root.progress = Engine.withSettings(root.progress, { characterColors: root.characterColors === "theme" ? "classic" : "theme" })
+    root.progressSaved(root.progress)
+  }
+
+  // Lines as rich text, with the blinking cursor at the end.
+  function withCaret(text) {
+    const safe = String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")
+    return safe + " <font color=\"" + (root.caretOn ? root.theme.accent : root.theme.ground) + "\">█</font>"
+  }
+
+  implicitWidth: root.windowWidth
+  implicitHeight: layout.height
 
   Keys.onPressed: (event) => {
     if (event.isAutoRepeat) return
@@ -202,48 +224,850 @@ FocusScope {
     onTriggered: root.finishCelebration()
   }
 
-  Column {
-    id: column
-    x: root.pad
-    y: root.pad
-    width: root.onDesktop ? root.fontSize * 30 : keyboard.implicitWidth
-    spacing: root.fontSize
+  Timer {
+    interval: 530
+    repeat: true
+    running: root.hintClock
+    onTriggered: root.caretOn = !root.caretOn
+  }
 
-    // Header: mission title, the learner's name, settings. Plain, so only the task glows.
-    Item {
-      width: parent.width
-      height: root.fontSize * 1.6
+  // The window, with a gold edge while a rank is being awarded.
+  Rectangle {
+    anchors.fill: parent
+    color: root.theme.ground
+    border.width: 1
+    border.color: root.rankUp ? root.theme.rank : root.onDesktop ? root.theme.accent : root.theme.line
+  }
+
+  // A key cap in the key bar, with what it does.
+  component KeyHint: Row {
+    id: hint
+    property string key: ""
+    property string action: ""
+    spacing: root.f * 0.4
+
+    Rectangle {
+      width: keyText.implicitWidth + root.f * 0.6
+      height: keyText.implicitHeight + root.f * 0.1
+      anchors.verticalCenter: parent.verticalCenter
+      color: "transparent"
+      border.width: 1
+      border.color: root.theme.faint
 
       Text {
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        text: root.mission ? "Mission " + root.session.mission + ": " + root.mission.title : "Hacker Academy"
-        color: root.textColor
+        id: keyText
+        anchors.centerIn: parent
+        text: hint.key
+        color: root.theme.text
         font.family: root.fontFamily
-        font.pixelSize: root.fontSize * 1.15
-        font.bold: true
+        font.pixelSize: root.f * 0.7
+      }
+    }
+
+    Text {
+      anchors.verticalCenter: parent.verticalCenter
+      text: hint.action
+      color: root.theme.quiet
+      font.family: root.fontFamily
+      font.pixelSize: root.f * 0.72
+    }
+  }
+
+  Column {
+    id: layout
+    width: root.windowWidth
+
+    // Title bar: the Academy, the part, and the learner (or, on the desktop, where they are).
+    Rectangle {
+      width: parent.width
+      height: root.f * (root.onDesktop ? 2 : 2.4)
+      color: root.theme.bars
+      border.width: 1
+      border.color: root.theme.line
+
+      Row {
+        anchors.left: parent.left
+        anchors.leftMargin: root.pad
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: root.f * 0.9
+
+        Text {
+          text: "▌HACKER ACADEMY"
+          color: root.theme.accent
+          font.family: root.fontFamily
+          font.pixelSize: root.f * (root.onDesktop ? 0.75 : 0.9)
+          font.weight: Font.Black
+          font.letterSpacing: root.f * 0.12
+        }
+
+        Text {
+          visible: !root.onDesktop
+          text: "// " + Missions.CAMPAIGN.part.toLowerCase()
+          color: root.theme.quiet
+          font.family: root.fontFamily
+          font.pixelSize: root.f * 0.9
+        }
       }
 
       Row {
         anchors.right: parent.right
+        anchors.rightMargin: root.pad
         anchors.verticalCenter: parent.verticalCenter
-        spacing: root.fontSize
+        spacing: root.f * 0.9
 
         Text {
-          visible: root.codename !== ""
-          text: root.codename
-          color: root.dimColor
+          anchors.verticalCenter: parent.verticalCenter
+          visible: root.onDesktop && root.mission !== null
+          text: root.mission ? "M" + Engine.missionNumber(root.session.mission) + " · step " + (root.session.step + 1) + " / " + root.mission.steps.length : ""
+          color: root.theme.quiet
           font.family: root.fontFamily
-          font.pixelSize: root.fontSize
+          font.pixelSize: root.f * 0.72
+        }
+
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          visible: !root.onDesktop && root.codename !== ""
+          text: root.codename
+          color: root.theme.text
+          font.family: root.fontFamily
+          font.pixelSize: root.f * 0.8
+          font.bold: true
+        }
+
+        Rectangle {
+          objectName: "rankChip"
+          anchors.verticalCenter: parent.verticalCenter
+          visible: !root.onDesktop && root.rank !== ""
+          width: chipRow.implicitWidth + root.f * 0.9
+          height: root.f * 1.5
+          color: "transparent"
+          border.width: 1
+          border.color: root.theme.done
+
+          Row {
+            id: chipRow
+            anchors.centerIn: parent
+            spacing: root.f * 0.35
+
+            PixelSprite {
+              anchors.verticalCenter: parent.verticalCenter
+              width: root.f * 0.9
+              height: root.f * 0.95
+              sprite: "recruitBadge"
+              flat: root.theme.done
+            }
+
+            Text {
+              objectName: "rankChipText"
+              anchors.verticalCenter: parent.verticalCenter
+              text: root.rank.toUpperCase()
+              color: root.theme.done
+              font.family: root.fontFamily
+              font.pixelSize: root.f * 0.72
+              font.bold: true
+              font.letterSpacing: root.f * 0.08
+            }
+          }
+        }
+      }
+    }
+
+    // Progress strip: every mission of the part, grouped by rank.
+    Item {
+      width: parent.width
+      height: strip.height + root.f * (root.onDesktop ? 1.1 : 1.6)
+
+      ProgressStrip {
+        id: strip
+        objectName: "progressStrip"
+        x: root.pad
+        anchors.verticalCenter: parent.verticalCenter
+        width: parent.width - root.pad * 2 - (root.onDesktop ? stripRank.width + root.f : 0)
+        height: implicitHeight
+        ranks: root.campaign
+        compact: root.onDesktop
+        theme: root.theme
+        fontFamily: root.fontFamily
+        fontSize: root.f
+      }
+
+      Text {
+        id: stripRank
+        visible: root.onDesktop
+        anchors.right: parent.right
+        anchors.rightMargin: root.pad
+        anchors.verticalCenter: parent.verticalCenter
+        text: root.rank.toUpperCase()
+        color: root.theme.done
+        font.family: root.fontFamily
+        font.pixelSize: root.f * 0.65
+        font.bold: true
+        font.letterSpacing: root.f * 0.1
+      }
+
+      Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: root.theme.line }
+    }
+
+    // Mission header: number, title, and the steps.
+    Item {
+      visible: !root.onDesktop
+      width: parent.width
+      height: visible ? root.f * 4 : 0
+
+      Column {
+        x: root.pad
+        anchors.bottom: parent.bottom
+        spacing: root.f * 0.15
+
+        Text {
+          text: root.mission ? "MISSION " + Engine.missionNumber(root.session.mission) : "CAMPAIGN"
+          color: root.theme.quiet
+          font.family: root.fontFamily
+          font.pixelSize: root.f * 0.72
+          font.letterSpacing: root.f * 0.18
+        }
+
+        Text {
+          objectName: "missionTitle"
+          text: root.mission ? root.mission.title : Missions.CAMPAIGN.part
+          color: root.theme.text
+          font.family: root.fontFamily
+          font.pixelSize: root.f * 1.7
+          font.weight: Font.Black
+        }
+      }
+
+      Row {
+        visible: root.mission !== null
+        anchors.right: parent.right
+        anchors.rightMargin: root.pad
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: root.f * 0.45
+        spacing: root.f * 0.7
+
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          text: root.mission ? "STEP " + (root.session.step + 1) + " / " + root.mission.steps.length : ""
+          color: root.theme.quiet
+          font.family: root.fontFamily
+          font.pixelSize: root.f * 0.72
+          font.letterSpacing: root.f * 0.16
+        }
+
+        Row {
+          objectName: "stepPips"
+          anchors.verticalCenter: parent.verticalCenter
+          spacing: root.f * 0.25
+
+          Repeater {
+            model: root.mission ? Engine.stepStates(root.mission.steps.length, root.session.step, root.celebrating) : []
+
+            Rectangle {
+              required property string modelData
+              width: root.f * 1.3
+              height: root.f * 0.45
+              color: modelData === "done" ? root.theme.done : modelData === "now" ? root.theme.accent : root.theme.line
+            }
+          }
+        }
+      }
+    }
+
+    // The body: who's talking and the task, or the rank-up, the map, or settings.
+    Item {
+      id: body
+      width: parent.width
+      height: root.bodyHeight + root.pad * 2
+
+      Item {
+        id: bodyArea
+        x: root.pad
+        y: root.pad
+        width: parent.width - root.pad * 2
+        height: root.bodyHeight
+
+        // Who's talking, and what they say.
+        Row {
+          id: speakerRow
+          visible: !root.showingSettings && root.step !== null && !root.rankUp
+          width: parent.width
+          height: root.f * (root.onDesktop ? 4.8 : 6.6)
+          spacing: root.f * (root.onDesktop ? 0.7 : 1)
+
+          Box {
+            objectName: "portrait"
+            width: root.f * (root.onDesktop ? 4.8 : 8.2)
+            height: parent.height
+            label: root.onDesktop ? "" : (root.speaker === "bolt" ? "Bolt" : "The Mentor")
+            labelColor: root.speaker === "bolt" ? root.theme.cyan : root.theme.text
+            lineColor: root.theme.line
+            ground: root.theme.ground
+            boldLabel: true
+            fontFamily: root.fontFamily
+            fontSize: root.f
+
+            PixelSprite {
+              objectName: "portraitSprite"
+              anchors.centerIn: parent
+              width: Math.min(parent.width, parent.height) * (root.onDesktop ? 1.35 : 1.15)
+              height: width
+              sprite: root.speaker === "bolt" ? "bolt" : "mentor"
+              theme: root.theme
+              mode: root.characterColors
+            }
+          }
+
+          Box {
+            width: parent.width - x
+            height: parent.height
+            label: root.onDesktop ? "" : Missions.UI.transmission
+            labelColor: root.theme.quiet
+            lineColor: root.onDesktop ? "transparent" : root.theme.line
+            ground: root.theme.ground
+            fontFamily: root.fontFamily
+            fontSize: root.f
+
+            Text {
+              objectName: "lines"
+              visible: !root.celebrating
+              width: parent.width
+              anchors.verticalCenter: parent.verticalCenter
+              textFormat: Text.StyledText
+              text: root.step ? root.withCaret(Engine.render(root.step.lines.join("\n"), root.codename)) : ""
+              color: root.theme.text
+              font.family: root.fontFamily
+              font.pixelSize: root.f * (root.onDesktop ? 0.95 : 1.25)
+              lineHeight: 1.15
+              wrapMode: Text.Wrap
+            }
+
+            Text {
+              objectName: "success"
+              visible: root.celebrating
+              width: parent.width
+              anchors.verticalCenter: parent.verticalCenter
+              text: root.step && root.celebrating ? Engine.render(root.step.success.line, root.codename) : ""
+              color: root.theme.done
+              font.family: root.fontFamily
+              font.pixelSize: root.f * (root.onDesktop ? 0.95 : 1.25)
+              font.bold: true
+              wrapMode: Text.Wrap
+            }
+          }
+        }
+
+        // The task: the one box that's alive.
+        Box {
+          id: taskBox
+          visible: !root.showingSettings && root.step !== null && !root.rankUp
+          y: speakerRow.height + root.f * (root.onDesktop ? 0.8 : 1.1)
+          width: parent.width
+          height: parent.height - y
+          label: Missions.UI.yourTask
+          labelColor: root.theme.accent
+          lineColor: root.theme.accent
+          ground: root.theme.ground
+          fill: root.theme.field
+          boldLabel: true
+          fontFamily: root.fontFamily
+          fontSize: root.f
+
+          Column {
+            width: parent.width
+            spacing: root.f * 0.5
+
+            Item {
+              id: taskArea
+              width: parent.width
+              height: root.f * (root.onDesktop ? 4.6 : 5)
+
+              Column {
+                visible: root.expectType === "button"
+                anchors.centerIn: parent
+                spacing: root.f / 2
+
+                Rectangle {
+                  // The rank-up has its own button with this name.
+                  objectName: root.expectType === "button" && !root.rankUp ? "button-" + root.step.expect.id : "taskButton"
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  width: buttonLabel.implicitWidth + root.f * 3
+                  height: Math.max(44, root.f * 2.6)
+                  color: buttonArea.containsMouse || root.celebrating ? root.theme.accent : "transparent"
+                  border.color: root.theme.accent
+                  border.width: 2
+
+                  Text {
+                    id: buttonLabel
+                    anchors.centerIn: parent
+                    text: root.step && root.step.expect.label ? root.step.expect.label.toUpperCase() : ""
+                    color: buttonArea.containsMouse || root.celebrating ? root.theme.bars : root.theme.accent
+                    font.family: root.fontFamily
+                    font.pixelSize: root.f
+                    font.bold: true
+                    font.letterSpacing: root.f * 0.08
+                  }
+
+                  MouseArea {
+                    id: buttonArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.handle({ type: "button", id: root.step.expect.id })
+                  }
+                }
+
+                Text {
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  visible: root.step !== null && root.step.expect.key !== undefined
+                  text: Missions.UI.orEnter
+                  color: root.theme.quiet
+                  font.family: root.fontFamily
+                  font.pixelSize: root.f * 0.8
+                }
+              }
+
+              // Labelled tasks: what to do, a tally, and what the step shows (typed letters,
+              // the force-field bar, or Bolt's shouting and alarm).
+              Column {
+                visible: root.expectType !== "button" && root.step !== null && root.step.expect.label !== undefined
+                anchors.centerIn: parent
+                spacing: root.f / 3
+
+                Row {
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  spacing: root.f * 0.6
+
+                  Text {
+                    text: ">"
+                    color: root.theme.done
+                    font.family: root.fontFamily
+                    font.pixelSize: root.f * 1.1
+                    font.bold: true
+                  }
+
+                  Text {
+                    objectName: "instruction"
+                    text: root.step && root.step.expect.label ? root.step.expect.label : ""
+                    color: root.theme.text
+                    font.family: root.fontFamily
+                    font.pixelSize: root.f * 1.1
+                    font.bold: true
+                  }
+
+                  Text {
+                    objectName: "tally"
+                    visible: (root.expectType === "pointer" && root.step.expect.ids.length > 1) || root.expectType === "anykey"
+                    text: root.expectType === "pointer" ? root.session.hits.length + " of " + root.step.expect.ids.length
+                      : root.expectType === "anykey" ? root.session.count + " of " + root.step.expect.times : ""
+                    color: root.theme.quiet
+                    font.family: root.fontFamily
+                    font.pixelSize: root.f
+                    anchors.verticalCenter: parent.verticalCenter
+                  }
+                }
+
+                // The shortcut to press, since Omarchy's shortcuts never reach the Academy's keyboard.
+                Row {
+                  objectName: "combo"
+                  visible: root.step !== null && root.step.combo !== undefined
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  spacing: root.f / 2
+
+                  Repeater {
+                    model: root.step && root.step.combo ? root.step.combo : []
+
+                    Row {
+                      id: comboKey
+                      required property string modelData
+                      required property int index
+                      spacing: root.f / 2
+
+                      Text {
+                        visible: comboKey.index > 0
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "+"
+                        color: root.theme.quiet
+                        font.family: root.fontFamily
+                        font.pixelSize: root.f * 1.2
+                      }
+
+                      Rectangle {
+                        id: comboCap
+                        objectName: "combo-" + comboKey.modelData
+                        property bool lit: root.celebrating || root.session.hint >= 2
+                        width: Math.max(comboLabel.implicitWidth + root.f * 1.2, root.f * 3)
+                        height: root.f * 2.3
+                        color: comboCap.lit ? root.theme.accent : "transparent"
+                        border.color: comboCap.lit ? root.theme.accent : root.theme.faint
+                        border.width: 1
+
+                        // A key's lower edge, so the cap looks pressable.
+                        Rectangle {
+                          anchors.top: parent.bottom
+                          width: parent.width
+                          height: root.f * 0.18
+                          color: comboCap.lit ? Theme.shade(String(root.theme.accent), -0.45) : root.theme.line
+                        }
+
+                        Text {
+                          id: comboLabel
+                          anchors.centerIn: parent
+                          text: comboKey.modelData.toUpperCase()
+                          color: comboCap.lit ? root.theme.bars : root.theme.text
+                          font.family: root.fontFamily
+                          font.pixelSize: root.f * 0.85
+                          font.weight: Font.Black
+                        }
+                      }
+                    }
+                  }
+                }
+
+                Text {
+                  objectName: "typed"
+                  visible: root.step !== null && root.step.display === "typed"
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  text: (root.session.typed || "").split("").join(" ")
+                  color: root.celebrating ? root.theme.done : root.theme.cyan
+                  font.family: root.fontFamily
+                  font.pixelSize: root.f * 2
+                  font.bold: true
+                }
+
+                Item {
+                  objectName: "shield"
+                  visible: root.step !== null && root.step.display === "shield"
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  width: root.f * 20
+                  height: root.f * 1.6
+
+                  Rectangle {
+                    anchors.fill: parent
+                    color: "transparent"
+                    border.color: root.theme.accent
+                    border.width: 1
+                  }
+
+                  Rectangle {
+                    objectName: "shieldFill"
+                    height: parent.height
+                    color: root.theme.accent
+                    width: root.celebrating ? parent.width
+                      : root.expectType === "hold" ? parent.width * Math.min(1, root.shiftHeldMs / root.step.expect.ms) : 0
+                  }
+
+                  Text {
+                    anchors.centerIn: parent
+                    visible: root.letGoEarly && !root.celebrating
+                    text: Missions.UI.keepHolding
+                    color: root.theme.text
+                    font.family: root.fontFamily
+                    font.pixelSize: root.f
+                    font.bold: true
+                  }
+                }
+
+                Text {
+                  id: loudText
+                  objectName: "loud"
+                  visible: root.step !== null && root.step.display === "loud"
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  text: root.step && root.step.loud ? (root.celebrating ? root.step.quiet : root.step.loud) : ""
+                  color: root.celebrating ? root.theme.text : root.theme.danger
+                  font.family: root.fontFamily
+                  font.pixelSize: root.f * 1.6
+                  font.bold: !root.celebrating
+
+                  SequentialAnimation on opacity {
+                    running: !root.celebrating && root.step !== null && root.step.display === "loud"
+                    loops: Animation.Infinite
+                    onStopped: loudText.opacity = 1
+                    NumberAnimation { to: 0.3; duration: 250 }
+                    NumberAnimation { to: 1; duration: 250 }
+                  }
+                }
+              }
+
+              // Bolt's typo, with a blinking cursor where Backspace erases.
+              Row {
+                visible: root.step !== null && root.step.field !== undefined
+                anchors.centerIn: parent
+                spacing: root.f * 0.1
+
+                Text {
+                  id: fieldText
+                  objectName: "field"
+                  text: root.step && root.step.field ? root.step.field.slice(0, root.step.field.length - root.session.count) : ""
+                  color: root.celebrating ? root.theme.done : root.theme.cyan
+                  font.family: root.fontFamily
+                  font.pixelSize: root.f * 2.4
+                  font.bold: true
+
+                  SequentialAnimation on scale {
+                    running: root.celebrating
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 1.2; duration: 300; easing.type: Easing.OutQuad }
+                    NumberAnimation { to: 1.0; duration: 300; easing.type: Easing.InQuad }
+                  }
+                }
+
+                Rectangle {
+                  objectName: "cursor"
+                  visible: !root.celebrating
+                  width: root.f * 0.6
+                  height: fieldText.height * 0.75
+                  anchors.verticalCenter: fieldText.verticalCenter
+                  color: root.theme.cyan
+
+                  SequentialAnimation on opacity {
+                    running: !root.celebrating
+                    loops: Animation.Infinite
+                    NumberAnimation { to: 0; duration: 500 }
+                    NumberAnimation { to: 1; duration: 500 }
+                  }
+                }
+              }
+
+              Rectangle {
+                visible: root.expectType === "codename"
+                anchors.centerIn: parent
+                width: root.f * 18
+                height: root.f * 2.6
+                color: root.theme.ground
+                border.color: codenameInput.activeFocus || root.celebrating ? root.theme.accent : root.theme.faint
+                border.width: 1
+
+                Text {
+                  anchors.left: parent.left
+                  anchors.leftMargin: root.f / 2
+                  anchors.verticalCenter: parent.verticalCenter
+                  text: ">"
+                  color: root.theme.done
+                  font.family: root.fontFamily
+                  font.pixelSize: root.f * 1.3
+                  font.bold: true
+                }
+
+                TextInput {
+                  id: codenameInput
+                  objectName: "codenameInput"
+                  anchors.fill: parent
+                  anchors.margins: root.f / 2
+                  anchors.leftMargin: root.f * 1.6
+                  verticalAlignment: TextInput.AlignVCenter
+                  maximumLength: 16
+                  readOnly: root.celebrating
+                  color: root.celebrating ? root.theme.done : root.theme.text
+                  selectionColor: root.theme.accent
+                  font.family: root.fontFamily
+                  font.pixelSize: root.f * 1.3
+                  Keys.onPressed: (event) => {
+                    root.trackDown(event)
+                    if (event.key === Qt.Key_Escape) { root.exitRequested(); event.accepted = true; return }
+                    event.accepted = false
+                  }
+                  Keys.onReleased: (event) => { root.trackUp(event); event.accepted = false }
+                  onAccepted: root.handle({ type: "submit", value: codenameInput.text })
+
+                  Text {
+                    visible: codenameInput.text === ""
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Missions.UI.codenamePrompt
+                    color: root.theme.faint
+                    font: codenameInput.font
+                  }
+                }
+              }
+            }
+
+            // Help that grows while the learner is stuck: Bolt's hint, then the Mentor's demo.
+            Column {
+              width: parent.width
+              height: root.f * (root.onDesktop ? 3.6 : 3.2)
+              spacing: root.f * 0.3
+
+              Text {
+                objectName: "boltHint"
+                width: parent.width
+                visible: root.step !== null && !root.celebrating && root.session.hint >= 1
+                text: root.step ? "Bolt: " + root.step.hint.bolt : ""
+                color: root.theme.cyan
+                font.family: root.fontFamily
+                font.pixelSize: root.f * (root.onDesktop ? 0.8 : 0.95)
+                wrapMode: Text.Wrap
+              }
+
+              Text {
+                objectName: "demoHint"
+                width: parent.width
+                visible: root.step !== null && !root.celebrating && root.session.hint >= 3
+                text: root.step ? "Mentor: " + root.step.hint.demo : ""
+                color: root.theme.text
+                font.family: root.fontFamily
+                font.pixelSize: root.f * (root.onDesktop ? 0.8 : 0.95)
+                wrapMode: Text.Wrap
+              }
+            }
+
+            // The keyboard keeps its space even when hidden; pointer steps play in the same space.
+            // Desktop missions have neither.
+            Item {
+              visible: !root.onDesktop
+              width: parent.width
+              height: keyboard.implicitHeight
+
+              PointerPlayground {
+                id: playground
+                objectName: "playground"
+                anchors.fill: parent
+                visible: root.expectType === "pointer" && !root.showingSettings
+                enabled: !root.celebrating
+                play: root.step && root.step.play ? root.step.play : ""
+                hits: root.session.hits
+                highlight: root.session.hint >= 2
+                theme: root.theme
+                mode: root.characterColors
+                fontFamily: root.fontFamily
+                fontSize: root.f
+                keepScrollingText: Missions.UI.keepScrolling
+                onPointerEvent: (event) => root.handle(event)
+              }
+
+              OnScreenKeyboard {
+                id: keyboard
+                objectName: "keyboard"
+                anchors.horizontalCenter: parent.horizontalCenter
+                opacity: root.keyboardShown ? 1 : 0
+                pressed: Model.pressedLabels(root.keys)
+                lit: root.step && root.session.hint >= 2 ? root.step.hint.keys : []
+                textColor: root.theme.text
+                dimColor: root.theme.faint
+                accentColor: root.theme.accent
+                pressedTextColor: root.theme.bars
+                fontFamily: root.fontFamily
+                unit: root.f * 2.4
+
+                Behavior on opacity { NumberAnimation { duration: 200 } }
+              }
+            }
+          }
+        }
+
+        RankUp {
+          id: rankUpView
+          objectName: "rankUp"
+          visible: root.rankUp
+          anchors.fill: parent
+          rank: root.step && root.step.badge ? root.step.badge : ""
+          level: Missions.CAMPAIGN.ranks.findIndex(function(r) { return r.name === rankUpView.rank }) + 1
+          previousRank: rankUpView.level > 1 ? Missions.CAMPAIGN.ranks[rankUpView.level - 2].name : ""
+          rankNames: Missions.CAMPAIGN.ranks.map(function(r) { return r.name })
+          line: root.step ? (root.celebrating ? Engine.render(root.step.success.line, root.codename) : Engine.render(root.step.lines.join(" "), root.codename)) : ""
+          unlocks: [Missions.UI.accessLevel.replace("{level}", rankUpView.level), Missions.UI.badgeAdded.replace("{rank}", rankUpView.rank)]
+          buttonId: root.step ? root.step.expect.id : ""
+          buttonLabel: root.step && root.step.expect.label ? root.step.expect.label : ""
+          celebrating: root.celebrating
+          compact: root.onDesktop
+          rankUpLabel: Missions.UI.rankUp
+          unlockedLabel: Missions.UI.unlocked
+          theme: root.theme
+          mode: root.characterColors
+          fontFamily: root.fontFamily
+          fontSize: root.f
+          onPressed: root.handle({ type: "button", id: root.step.expect.id })
+        }
+
+        CampaignMap {
+          objectName: "campaignMap"
+          visible: root.finishedAll && !root.showingSettings
+          anchors.fill: parent
+          ranks: root.campaign
+          part: Missions.CAMPAIGN.part
+          nextPart: Missions.CAMPAIGN.nextPart
+          nextPartText: Missions.UI.nextPartLocked
+          message: Missions.UI.comingSoon
+          badgesLabel: Missions.UI.badges
+          lockedLabel: Missions.UI.locked
+          theme: root.theme
+          mode: root.characterColors
+          fontFamily: root.fontFamily
+          fontSize: root.f
+        }
+
+        // Settings, for grown-ups: in the body's place, same window size.
+        Column {
+          objectName: "settings"
+          visible: root.showingSettings
+          spacing: root.f
+
+          Repeater {
+            model: [
+              { id: "skip", label: "Skip this mission", enabled: !root.finishedAll },
+              { id: "colors", label: root.characterColors === "theme" ? Missions.UI.themeColors : Missions.UI.classicColors, enabled: true },
+              { id: "reset", label: root.confirmingReset ? "Click again to erase all progress" : "Reset all progress", enabled: true },
+              { id: "back", label: "Back", enabled: true }
+            ]
+
+            Text {
+              id: settingsItem
+              required property var modelData
+              objectName: "settings-" + settingsItem.modelData.id
+              visible: settingsItem.modelData.enabled
+              text: "> " + settingsItem.modelData.label
+              color: settingsItem.modelData.id === "reset" && root.confirmingReset ? root.theme.danger : root.theme.text
+              font.family: root.fontFamily
+              font.pixelSize: root.f
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                  if (settingsItem.modelData.id === "skip") root.skipMission()
+                  else if (settingsItem.modelData.id === "colors") root.toggleCharacterColors()
+                  else if (settingsItem.modelData.id === "reset") root.resetProgress()
+                  else { root.showingSettings = false; root.focusTask() }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Key bar: what works right now.
+    Rectangle {
+      width: parent.width
+      height: root.f * (root.onDesktop ? 1.9 : 2.2)
+      color: root.theme.bars
+      border.width: 1
+      border.color: root.theme.line
+
+      Row {
+        anchors.left: parent.left
+        anchors.leftMargin: root.pad
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: root.f * 1.3
+
+        KeyHint {
+          objectName: "closeButton"
+          key: "ESC"
+          action: "close"
+
+          MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.exitRequested()
+          }
         }
 
         Text {
           objectName: "settingsButton"
           visible: !root.showingSettings
-          text: Missions.UI.settings
-          color: root.dimColor
+          anchors.verticalCenter: parent.verticalCenter
+          text: Missions.UI.settings.toLowerCase()
+          color: root.theme.quiet
           font.family: root.fontFamily
-          font.pixelSize: root.fontSize * 0.85
+          font.pixelSize: root.f * 0.72
           font.underline: true
 
           MouseArea {
@@ -253,505 +1077,16 @@ FocusScope {
           }
         }
       }
-    }
-
-    // Speaker and lines.
-    Item {
-      width: parent.width
-      height: root.fontSize * 4
-      opacity: !root.showingSettings && root.step !== null ? 1 : 0
-      enabled: opacity > 0
-
-      Rectangle {
-        id: portrait
-        objectName: "portrait"
-        width: root.fontSize * 4
-        height: root.fontSize * 4
-        radius: root.fontSize / 2
-        color: "transparent"
-        border.width: 2
-        border.color: root.step && root.step.speaker === "bolt" ? root.boltColor : root.dimColor
-
-        PixelSprite {
-          objectName: "portraitSprite"
-          anchors.fill: parent
-          anchors.margins: root.fontSize * 0.3
-          sprite: root.step && root.step.speaker === "bolt" ? "bolt" : "mentor"
-          lineColor: root.textColor
-          boltColor: root.boltColor
-          accentColor: root.accentColor
-          dimColor: root.dimColor
-          backgroundColor: root.backgroundColor
-        }
-      }
 
       Text {
-        objectName: "lines"
-        anchors.left: portrait.right
-        anchors.leftMargin: root.fontSize
+        visible: !root.onDesktop
         anchors.right: parent.right
+        anchors.rightMargin: root.pad
         anchors.verticalCenter: parent.verticalCenter
-        text: root.step ? Engine.render(root.step.lines.join("\n"), root.codename) : ""
-        color: root.textColor
+        text: Missions.UI.progressSaved.toLowerCase()
+        color: root.theme.quiet
         font.family: root.fontFamily
-        font.pixelSize: root.fontSize * 1.15
-        wrapMode: Text.Wrap
-      }
-    }
-
-    // The task.
-    Item {
-      width: parent.width
-      height: root.fontSize * 5
-      opacity: !root.showingSettings && root.step !== null ? 1 : 0
-      enabled: opacity > 0
-
-      Column {
-        visible: root.expectType === "button"
-        anchors.centerIn: parent
-        spacing: root.fontSize / 2
-
-        Rectangle {
-          objectName: root.expectType === "button" ? "button-" + root.step.expect.id : "taskButton"
-          anchors.horizontalCenter: parent.horizontalCenter
-          width: buttonLabel.implicitWidth + root.fontSize * 3
-          height: root.fontSize * 3
-          radius: root.fontSize / 2
-          color: buttonArea.containsMouse || root.celebrating ? root.accentColor : "transparent"
-          border.color: root.accentColor
-          border.width: 2
-
-          Text {
-            id: buttonLabel
-            anchors.centerIn: parent
-            text: root.step && root.step.expect.label ? root.step.expect.label : ""
-            color: buttonArea.containsMouse || root.celebrating ? root.backgroundColor : root.accentColor
-            font.family: root.fontFamily
-            font.pixelSize: root.fontSize * 1.1
-            font.bold: true
-          }
-
-          MouseArea {
-            id: buttonArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.handle({ type: "button", id: root.step.expect.id })
-          }
-        }
-
-        Text {
-          anchors.horizontalCenter: parent.horizontalCenter
-          visible: root.step !== null && root.step.expect.key !== undefined
-          text: Missions.UI.orEnter
-          color: root.dimColor
-          font.family: root.fontFamily
-          font.pixelSize: root.fontSize * 0.85
-        }
-      }
-
-      // Labelled tasks: what to do, a tally, and what the step shows (typed letters,
-      // the force-field bar, or Bolt's shouting and alarm).
-      Column {
-        visible: root.expectType !== "button" && root.step !== null && root.step.expect.label !== undefined
-        anchors.centerIn: parent
-        spacing: root.fontSize / 3
-
-        Row {
-          anchors.horizontalCenter: parent.horizontalCenter
-          spacing: root.fontSize
-
-          Text {
-            objectName: "instruction"
-            text: root.step && root.step.expect.label ? root.step.expect.label : ""
-            color: root.accentColor
-            font.family: root.fontFamily
-            font.pixelSize: root.fontSize * 1.2
-            font.bold: true
-          }
-
-          Text {
-            objectName: "tally"
-            visible: (root.expectType === "pointer" && root.step.expect.ids.length > 1) || root.expectType === "anykey"
-            text: root.expectType === "pointer" ? root.session.hits.length + " of " + root.step.expect.ids.length
-              : root.expectType === "anykey" ? root.session.count + " of " + root.step.expect.times : ""
-            color: root.dimColor
-            font.family: root.fontFamily
-            font.pixelSize: root.fontSize
-            anchors.verticalCenter: parent.verticalCenter
-          }
-        }
-
-        // The shortcut to press, since Omarchy's shortcuts never reach the Academy's keyboard.
-        Row {
-          objectName: "combo"
-          visible: root.step !== null && root.step.combo !== undefined
-          anchors.horizontalCenter: parent.horizontalCenter
-          spacing: root.fontSize / 2
-
-          Repeater {
-            model: root.step && root.step.combo ? root.step.combo : []
-
-            Row {
-              id: comboKey
-              required property string modelData
-              required property int index
-              spacing: root.fontSize / 2
-
-              Text {
-                visible: comboKey.index > 0
-                anchors.verticalCenter: parent.verticalCenter
-                text: "+"
-                color: root.dimColor
-                font.family: root.fontFamily
-                font.pixelSize: root.fontSize * 1.2
-              }
-
-              Rectangle {
-                id: comboCap
-                objectName: "combo-" + comboKey.modelData
-                property bool lit: root.celebrating || root.session.hint >= 2
-                width: Math.max(comboLabel.implicitWidth + root.fontSize, root.fontSize * 2.4)
-                height: root.fontSize * 2.2
-                radius: root.fontSize / 3
-                color: comboCap.lit ? root.accentColor : "transparent"
-                border.color: root.accentColor
-                border.width: 2
-
-                Text {
-                  id: comboLabel
-                  anchors.centerIn: parent
-                  text: comboKey.modelData
-                  color: comboCap.lit ? root.backgroundColor : root.textColor
-                  font.family: root.fontFamily
-                  font.pixelSize: root.fontSize
-                  font.bold: true
-                }
-              }
-            }
-          }
-        }
-
-        Text {
-          objectName: "typed"
-          visible: root.step !== null && root.step.display === "typed"
-          anchors.horizontalCenter: parent.horizontalCenter
-          text: (root.session.typed || "").split("").join(" ")
-          color: root.celebrating ? root.accentColor : root.boltColor
-          font.family: root.fontFamily
-          font.pixelSize: root.fontSize * 2.2
-          font.bold: true
-        }
-
-        Item {
-          objectName: "shield"
-          visible: root.step !== null && root.step.display === "shield"
-          anchors.horizontalCenter: parent.horizontalCenter
-          width: root.fontSize * 20
-          height: root.fontSize * 2
-
-          Rectangle {
-            anchors.fill: parent
-            radius: height / 2
-            color: "transparent"
-            border.color: root.accentColor
-            border.width: 2
-          }
-
-          Rectangle {
-            objectName: "shieldFill"
-            height: parent.height
-            radius: height / 2
-            color: root.accentColor
-            opacity: 0.8
-            width: root.celebrating ? parent.width
-              : root.expectType === "hold" ? parent.width * Math.min(1, root.shiftHeldMs / root.step.expect.ms) : 0
-          }
-
-          Text {
-            anchors.centerIn: parent
-            visible: root.letGoEarly && !root.celebrating
-            text: Missions.UI.keepHolding
-            color: root.textColor
-            font.family: root.fontFamily
-            font.pixelSize: root.fontSize
-            font.bold: true
-          }
-        }
-
-        Text {
-          id: loudText
-          objectName: "loud"
-          visible: root.step !== null && root.step.display === "loud"
-          anchors.horizontalCenter: parent.horizontalCenter
-          text: root.step && root.step.loud ? (root.celebrating ? root.step.quiet : root.step.loud) : ""
-          color: root.celebrating ? root.textColor : root.accentColor
-          font.family: root.fontFamily
-          font.pixelSize: root.fontSize * 1.8
-          font.bold: !root.celebrating
-
-          SequentialAnimation on opacity {
-            running: !root.celebrating && root.step !== null && root.step.display === "loud"
-            loops: Animation.Infinite
-            onStopped: loudText.opacity = 1
-            NumberAnimation { to: 0.3; duration: 250 }
-            NumberAnimation { to: 1; duration: 250 }
-          }
-        }
-      }
-
-      // Bolt's typo, with a blinking cursor where Backspace erases.
-      Row {
-        visible: root.step !== null && root.step.field !== undefined
-        anchors.centerIn: parent
-        spacing: root.fontSize * 0.1
-
-        Text {
-          id: fieldText
-          objectName: "field"
-          text: root.step && root.step.field ? root.step.field.slice(0, root.step.field.length - root.session.count) : ""
-          color: root.celebrating ? root.accentColor : root.boltColor
-          font.family: root.fontFamily
-          font.pixelSize: root.fontSize * 2.6
-          font.bold: true
-
-          SequentialAnimation on scale {
-            running: root.celebrating
-            loops: Animation.Infinite
-            NumberAnimation { to: 1.2; duration: 300; easing.type: Easing.OutQuad }
-            NumberAnimation { to: 1.0; duration: 300; easing.type: Easing.InQuad }
-          }
-        }
-
-        Rectangle {
-          objectName: "cursor"
-          visible: !root.celebrating
-          width: root.fontSize * 0.25
-          height: fieldText.height * 0.8
-          anchors.verticalCenter: fieldText.verticalCenter
-          color: root.boltColor
-
-          SequentialAnimation on opacity {
-            running: !root.celebrating
-            loops: Animation.Infinite
-            NumberAnimation { to: 0; duration: 500 }
-            NumberAnimation { to: 1; duration: 500 }
-          }
-        }
-      }
-
-      Rectangle {
-        visible: root.expectType === "codename"
-        anchors.centerIn: parent
-        width: root.fontSize * 18
-        height: root.fontSize * 2.6
-        radius: root.fontSize / 3
-        color: "transparent"
-        border.color: codenameInput.activeFocus || root.celebrating ? root.accentColor : root.dimColor
-        border.width: 2
-
-        TextInput {
-          id: codenameInput
-          objectName: "codenameInput"
-          anchors.fill: parent
-          anchors.margins: root.fontSize / 2
-          verticalAlignment: TextInput.AlignVCenter
-          maximumLength: 16
-          readOnly: root.celebrating
-          color: root.celebrating ? root.accentColor : root.textColor
-          font.family: root.fontFamily
-          font.pixelSize: root.fontSize * 1.3
-          Keys.onPressed: (event) => {
-            root.trackDown(event)
-            if (event.key === Qt.Key_Escape) { root.exitRequested(); event.accepted = true; return }
-            event.accepted = false
-          }
-          Keys.onReleased: (event) => { root.trackUp(event); event.accepted = false }
-          onAccepted: root.handle({ type: "submit", value: codenameInput.text })
-
-          Text {
-            visible: codenameInput.text === ""
-            anchors.verticalCenter: parent.verticalCenter
-            text: Missions.UI.codenamePrompt
-            color: root.dimColor
-            font: codenameInput.font
-          }
-        }
-      }
-
-      Rectangle {
-        objectName: "badge"
-        visible: root.step !== null && root.step.badge !== undefined
-        anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter
-        width: badgeText.implicitWidth + root.fontSize * 2
-        height: root.fontSize * 2.2
-        radius: height / 2
-        color: "transparent"
-        border.color: root.accentColor
-        border.width: 2
-
-        Text {
-          id: badgeText
-          anchors.centerIn: parent
-          text: root.step && root.step.badge ? root.step.badge.toUpperCase() : ""
-          color: root.accentColor
-          font.family: root.fontFamily
-          font.pixelSize: root.fontSize
-          font.bold: true
-        }
-      }
-    }
-
-    // Feedback: the success line, or help that grows (Bolt's hint, then the Mentor's demo).
-    // Always takes its space, so the window never grows.
-    Column {
-      width: parent.width
-      height: root.fontSize * 5.5
-      spacing: root.fontSize / 2
-      opacity: !root.showingSettings ? 1 : 0
-
-      Text {
-        objectName: "success"
-        width: parent.width
-        visible: root.celebrating
-        text: root.step && root.celebrating
-          ? (root.step.success.speaker === "bolt" ? "Bolt: " : "Mentor: ") + Engine.render(root.step.success.line, root.codename)
-          : ""
-        color: root.accentColor
-        font.family: root.fontFamily
-        font.pixelSize: root.fontSize * 1.15
-        font.bold: true
-        wrapMode: Text.Wrap
-      }
-
-      Text {
-        objectName: "boltHint"
-        width: parent.width
-        visible: root.step !== null && !root.celebrating && root.session.hint >= 1
-        text: root.step ? "Bolt: " + root.step.hint.bolt : ""
-        color: root.boltColor
-        font.family: root.fontFamily
-        font.pixelSize: root.fontSize
-        wrapMode: Text.Wrap
-      }
-
-      Text {
-        objectName: "demoHint"
-        width: parent.width
-        visible: root.step !== null && !root.celebrating && root.session.hint >= 3
-        text: root.step ? "Mentor: " + root.step.hint.demo : ""
-        color: root.textColor
-        font.family: root.fontFamily
-        font.pixelSize: root.fontSize
-        wrapMode: Text.Wrap
-      }
-
-      Text {
-        objectName: "comingSoon"
-        width: parent.width
-        visible: root.finishedAll
-        text: Missions.UI.comingSoon
-        color: root.textColor
-        font.family: root.fontFamily
-        font.pixelSize: root.fontSize * 1.15
-        wrapMode: Text.Wrap
-      }
-    }
-
-    // The keyboard keeps its space even when hidden; pointer steps play in the same space.
-    // Desktop missions have neither.
-    Item {
-      visible: !root.onDesktop
-      width: keyboard.implicitWidth
-      height: keyboard.implicitHeight
-
-    PointerPlayground {
-      id: playground
-      objectName: "playground"
-      anchors.fill: parent
-      visible: root.expectType === "pointer" && !root.showingSettings
-      enabled: !root.celebrating
-      play: root.step && root.step.play ? root.step.play : ""
-      hits: root.session.hits
-      highlight: root.session.hint >= 2
-      textColor: root.textColor
-      dimColor: root.dimColor
-      accentColor: root.accentColor
-      boltColor: root.boltColor
-      backgroundColor: root.backgroundColor
-      fontFamily: root.fontFamily
-      fontSize: root.fontSize
-      keepScrollingText: Missions.UI.keepScrolling
-      onPointerEvent: (event) => root.handle(event)
-    }
-
-    OnScreenKeyboard {
-      id: keyboard
-      objectName: "keyboard"
-      opacity: root.keyboardShown ? 1 : 0
-      pressed: Model.pressedLabels(root.keys)
-      lit: root.step && root.session.hint >= 2 ? root.step.hint.keys : []
-      textColor: root.textColor
-      dimColor: root.dimColor
-      accentColor: root.accentColor
-      fontFamily: root.fontFamily
-      unit: root.unit
-
-      Behavior on opacity { NumberAnimation { duration: 200 } }
-    }
-    }
-
-    Text {
-      anchors.horizontalCenter: parent.horizontalCenter
-      text: Missions.UI.close
-      color: root.dimColor
-      font.family: root.fontFamily
-      font.pixelSize: root.fontSize * 0.8
-
-      MouseArea {
-        anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
-        onClicked: root.exitRequested()
-      }
-    }
-  }
-
-  // Settings, for grown-ups: drawn over the mission area, same window size.
-  Column {
-    objectName: "settings"
-    visible: root.showingSettings
-    x: root.pad
-    y: root.pad + root.fontSize * 3
-    spacing: root.fontSize
-
-    Repeater {
-      model: [
-        { id: "skip", label: "Skip this mission", enabled: !root.finishedAll },
-        { id: "reset", label: root.confirmingReset ? "Click again to erase all progress" : "Reset all progress", enabled: true },
-        { id: "back", label: "Back", enabled: true }
-      ]
-
-      Text {
-        id: settingsItem
-        required property var modelData
-        objectName: "settings-" + settingsItem.modelData.id
-        visible: settingsItem.modelData.enabled
-        text: settingsItem.modelData.label
-        color: settingsItem.modelData.id === "reset" && root.confirmingReset ? root.accentColor : root.textColor
-        font.family: root.fontFamily
-        font.pixelSize: root.fontSize
-        font.underline: true
-
-        MouseArea {
-          anchors.fill: parent
-          cursorShape: Qt.PointingHandCursor
-          onClicked: {
-            if (settingsItem.modelData.id === "skip") root.skipMission()
-            else if (settingsItem.modelData.id === "reset") root.resetProgress()
-            else { root.showingSettings = false; root.focusTask() }
-          }
-        }
+        font.pixelSize: root.f * 0.72
       }
     }
   }
