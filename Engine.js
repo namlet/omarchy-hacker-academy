@@ -138,6 +138,7 @@ function resume(missions, progress, previous) {
   if (previous && previous.mission === index && previous.windows) {
     session.windows = previous.windows
     session.focused = previous.focused || ""
+    session.layout = previous.layout || {}
   }
   var c = progress.current
   if (c && c.mission === index && index < missions.length && c.step < missions[index].steps.length) {
@@ -163,7 +164,7 @@ function isValidCodename(name) {
 
 // windows: the learner's own windows, opened during this mission ({address, app}).
 function startMission(index) {
-  return { mission: index, step: 0, count: 0, hits: [], typed: "", idleMs: 0, hint: 0, codename: "", windows: [], focused: "", celebrating: false, done: false }
+  return { mission: index, step: 0, count: 0, hits: [], typed: "", idleMs: 0, hint: 0, codename: "", windows: [], focused: "", layout: {}, stepStart: {}, celebrating: false, done: false }
 }
 
 function currentStep(missions, session) {
@@ -180,6 +181,8 @@ function advance(missions, session) {
     codename: session.codename,
     windows: session.windows,
     focused: session.focused,
+    layout: session.layout,
+    stepStart: {},
     celebrating: false,
     done: last
   }
@@ -210,6 +213,7 @@ function handle(missions, session, event) {
   var focusedBefore = session.focused
   if (event.type === "window" && (event.action === "open" || event.action === "close")) session = trackWindow(session, event)
   if (event.type === "window" && event.action === "focus") session = withChanges(session, { focused: event.address })
+  if (event.type === "window" && event.action === "geometry") session = trackGeometry(session, event)
   var step = currentStep(missions, session)
   if (!step || session.done || session.celebrating) return session
   var expect = step.expect
@@ -252,11 +256,46 @@ function handle(missions, session, event) {
   if (expect.type === "focus" && event.type === "window" && event.action === "focus"
       && event.address !== focusedBefore && ownWindow(session, event.address))
     return celebrate(session, {})
+  // Floating on (or off) for one of the learner's windows.
+  if (expect.type === "float" && event.type === "window" && event.action === "float"
+      && event.on === expect.on && ownWindow(session, event.address))
+    return celebrate(session, {})
+  // Swapping, moving, and resizing send no event, so the panel reports where the
+  // learner's windows are; each step compares them with where they were when it began.
+  if (event.type === "window" && event.action === "geometry" && ownWindow(session, event.address)
+      && ["swap", "move", "resize"].indexOf(expect.type) !== -1 && layoutChanged(expect.type, session.stepStart[event.address], event))
+    return celebrate(session, {})
   // Full screen on (or off) for the learner's window in the spotlight.
   if (expect.type === "fullscreen" && event.type === "window" && event.action === "fullscreen"
       && event.on === expect.on && ownWindow(session, session.focused))
     return celebrate(session, {})
   return session
+}
+
+// How far a window must go, or grow, to count: more than a nudge, less than a big drag.
+var LAYOUT_PX = 60
+
+// Swapped: a tiled window moved to another spot. Moved: a floating window was dragged.
+// Resized: a window grew or shrank.
+function layoutChanged(kind, before, now) {
+  if (!before) return false
+  var moved = Math.abs(now.at[0] - before.at[0]) >= LAYOUT_PX || Math.abs(now.at[1] - before.at[1]) >= LAYOUT_PX
+  var resized = Math.abs(now.size[0] - before.size[0]) >= LAYOUT_PX || Math.abs(now.size[1] - before.size[1]) >= LAYOUT_PX
+  if (kind === "swap") return !now.floating && !before.floating && moved
+  if (kind === "move") return now.floating && before.floating && moved
+  return resized
+}
+
+// Where each window is ({at, size, floating}), and where it was when the step began
+// (recorded the first time it's seen during the step).
+function trackGeometry(session, event) {
+  var place = { at: event.at, size: event.size, floating: event.floating }
+  var layout = {}, start = {}
+  for (var a in session.layout) layout[a] = session.layout[a]
+  for (var b in session.stepStart) start[b] = session.stepStart[b]
+  layout[event.address] = place
+  if (!start[event.address]) start[event.address] = place
+  return withChanges(session, { layout: layout, stepStart: start })
 }
 
 function ownWindow(session, address) {

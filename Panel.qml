@@ -87,6 +87,21 @@ Item {
     }
   }
 
+  // Swapping, dragging, and resizing send no event: while a step needs them, look
+  // where the windows are a couple of times a second. Each refresh is read next time.
+  Timer {
+    interval: 400
+    repeat: true
+    running: root.opened && view.watchesLayout
+    onTriggered: {
+      for (const t of Hyprland.toplevels.values) {
+        const ipc = t.lastIpcObject
+        if (ipc && ipc.at && ipc.size) view.windowGeometry({ address: t.address, at: ipc.at, size: ipc.size, floating: ipc.floating })
+      }
+      Hyprland.refreshToplevels()
+    }
+  }
+
   PanelWindow {
     visible: root.opened
     // Centered for missions inside the panel; a corner when the real desktop is the stage.

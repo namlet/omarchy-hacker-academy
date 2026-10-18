@@ -53,7 +53,9 @@ FocusScope {
   // the pointer resting on this window can't pull focus away from them.
   readonly property string keyboardFocus: root.desktopTask ? "none" : "exclusive"
   // Steps done on the real desktop with Omarchy's shortcuts.
-  readonly property bool desktopTask: ["window", "focus", "fullscreen"].indexOf(root.expectType) !== -1
+  readonly property bool desktopTask: ["window", "focus", "fullscreen", "swap", "float", "move", "resize"].indexOf(root.expectType) !== -1
+  // Steps whose action sends no event: the panel reports window positions meanwhile.
+  readonly property bool watchesLayout: ["swap", "move", "resize"].indexOf(root.expectType) !== -1
   // Desktop missions sit small in a corner, out of the way of the real windows.
   readonly property bool onDesktop: root.stage === "corner"
   readonly property string codename: root.session.codename || root.progress.codename
@@ -112,6 +114,11 @@ FocusScope {
   function windowEvent(event) {
     const w = Model.windowEvent(event)
     if (w) root.handle({ type: "window", action: w.action, address: w.address, app: w.app, on: w.on })
+  }
+
+  // Where a window is: {address, at: [x, y], size: [w, h], floating}, from Hyprland.
+  function windowGeometry(place) {
+    root.handle({ type: "window", action: "geometry", address: Model.windowAddress(place.address), at: place.at, size: place.size, floating: place.floating === true })
   }
 
   // Given the addresses of the windows on the current workspace: should the Academy

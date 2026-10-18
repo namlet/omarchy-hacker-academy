@@ -128,7 +128,7 @@ function windowAddress(address) {
   return String(address).replace(/^0x/, "")
 }
 
-// A window opening, closing, taking the keyboard, or going full screen, from
+// A window opening, closing, taking the keyboard, floating, or going full screen, from
 // Hyprland's raw events; null for anything else.
 // openwindow data is "address,workspace,class,title" (the title may contain commas);
 // closewindow data is "address".
@@ -143,6 +143,9 @@ function windowEvent(event) {
   // The window that hears the keyboard; empty when none does.
   if (name === "activewindowv2")
     return { action: "focus", address: windowAddress(parts[0]), app: "" }
+  // A window started floating ("address,1") or went back into the tiles ("address,0").
+  if (name === "changefloatingmode" && parts.length >= 2)
+    return { action: "float", address: windowAddress(parts[0]), on: parts[1] === "1", app: "" }
   // The window in the spotlight went full screen ("1") or back ("0").
   if (name === "fullscreen")
     return { action: "fullscreen", on: parts[0] === "1", address: "", app: "" }
@@ -176,6 +179,7 @@ if (typeof module !== "undefined") {
     pressedLabels: pressedLabels,
     appKind: appKind,
     windowEvent: windowEvent,
+    windowAddress: windowAddress,
     needsOwnWorkspace: needsOwnWorkspace
   }
 }

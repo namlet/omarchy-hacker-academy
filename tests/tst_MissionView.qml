@@ -184,7 +184,7 @@ Item {
       view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2], current: null }
       view.begin()
       compare([view.session.mission, view.session.step], [3, 0])
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5], current: null }
       view.begin()
       verify(view.finishedAll)
       verify(findChild(view, "comingSoon").visible)
@@ -552,6 +552,56 @@ Item {
       compare(view.session.step, 1, "after logging out the terminals are gone")
     }
 
+    // ------------------------------------------------------------ mission 5
+
+    function startMissionFive(step) {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4], current: { mission: 5, step: step, codename: "Zero" } }
+      view.begin()
+      wait(20)
+    }
+
+    function place(address, x, y, w, h, floating) { view.windowGeometry({ address: "0x" + address, at: [x, y], size: [w, h], floating: floating }) }
+    function floats(address, on) { view.windowEvent({ name: "changefloatingmode", data: address + "," + (on ? 1 : 0) }) }
+
+    function test_mission_five_end_to_end() {
+      startMissionFive(0)
+      const w = view.implicitWidth, h = view.implicitHeight
+      clickItem("button-ready")
+      waitForCelebration()
+      verify(!view.watchesLayout)
+      windowOpens("t1", "foot")
+      windowOpens("t2", "foot")
+      waitForCelebration()
+
+      verify(view.watchesLayout, "swapping sends no event")
+      compare(view.keyboardFocus, "none")
+      place("t1", 12, 12, 941, 1030, false)
+      place("t2", 967, 12, 941, 1030, false)
+      verify(!view.celebrating)
+      place("t1", 967, 12, 941, 1030, false)
+      waitForCelebration()
+
+      floats("t2", true)
+      waitForCelebration()
+      place("t2", 5, 5, 960, 1044, true)
+      verify(!view.celebrating, "where floating put it is the start")
+      place("t2", 400, 300, 960, 1044, true)
+      waitForCelebration()
+      place("t2", 400, 300, 960, 1044, true)
+      place("t2", 400, 300, 700, 600, true)
+      waitForCelebration()
+      floats("t2", false)
+      waitForCelebration()
+
+      windowCloses("t1")
+      windowCloses("t2")
+      waitForCelebration()
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+      clickItem("button-finish")
+      waitForCelebration()
+      verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(5) !== -1)
+    }
+
     function test_mission_three_keys_light_up_when_help_grows() {
       startMissionThree(1)
       verify(!findChild(view, "combo-Win").lit)
@@ -600,7 +650,7 @@ Item {
     }
 
     function test_the_map_shows_the_campaign_when_every_mission_is_done() {
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5], current: null }
       view.begin()
       wait(20)
       verify(findChild(view, "campaignMap").visible)
@@ -639,7 +689,7 @@ Item {
     }
 
     function test_nothing_to_skip_once_every_mission_is_done() {
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5], current: null }
       view.begin()
       clickItem("settingsButton")
       verify(!findChild(view, "settings-skip").visible)
