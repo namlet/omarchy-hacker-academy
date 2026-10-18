@@ -153,3 +153,9 @@ test("switching workspaces and carrying windows come from Hyprland's raw events"
   assert.deepEqual(Model.windowEvent({ name: "workspacev2", data: "8,8" }), { action: "workspace", workspace: 8, address: "", app: "" })
   assert.deepEqual(Model.windowEvent({ name: "movewindowv2", data: "5cdbbfae7dc0,8,8" }), { action: "carry", address: "5cdbbfae7dc0", workspace: 8, app: "" })
 })
+
+test("Omarchy's menus opening and closing come from layer events", () => {
+  assert.deepEqual(Model.windowEvent({ name: "openlayer", data: "omarchy-menu" }), { action: "menu", on: true, address: "", app: "" })
+  assert.equal(Model.windowEvent({ name: "closelayer", data: "omarchy-menu" }).on, false)
+  assert.equal(Model.windowEvent({ name: "openlayer", data: "hacker-academy" }), null, "the Academy's own window isn't a menu")
+})

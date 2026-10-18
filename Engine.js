@@ -243,9 +243,11 @@ function handle(missions, session, event) {
   if (expect.type === "tap" && event.type === "tap" && event.key === expect.key)
     return celebrate(session, {})
   // Opening counts for the right kind of app; closing only for a window the learner
-  // opened, so closing someone else's work never counts. expect.times asks for several.
+  // opened, so closing someone else's work never counts. expect.times asks for several;
+  // app "any" takes any app (but not the screensaver, which opens by itself).
   if (expect.type === "window" && event.type === "window" && event.action === expect.action) {
-    var counts = event.action === "open" ? event.app === expect.app : closedOwn !== null && closedOwn.app === expect.app
+    var app = event.action === "open" ? event.app : closedOwn !== null ? closedOwn.app : null
+    var counts = app !== null && (expect.app === "any" ? app !== "screensaver" : app === expect.app)
     if (!counts) return session
     var windowCount = session.count + 1
     if (windowCount >= (expect.times || 1)) return celebrate(session, { count: windowCount })
@@ -255,6 +257,9 @@ function handle(missions, session, event) {
   // repeats the focus event when a title changes, so it has to be a different window.
   if (expect.type === "focus" && event.type === "window" && event.action === "focus"
       && event.address !== focusedBefore && ownWindow(session, event.address))
+    return celebrate(session, {})
+  // One of Omarchy's menus opening or closing.
+  if (expect.type === "menu" && event.type === "window" && event.action === "menu" && event.on === expect.open)
     return celebrate(session, {})
   // Workspaces are rooms: the view names the one an event is about, "home" (where the
   // Academy plays), "room" (the secret room), or "other".

@@ -627,6 +627,107 @@ var MISSIONS = [
         }
       }
     ]
+  },
+  {
+    id: "toolkit",
+    title: "The Toolkit",
+    stage: "corner",
+    steps: [
+      {
+        speaker: "mentor",
+        lines: ["Every hacker needs a toolkit.", "Omarchy keeps its tools in menus."],
+        expect: { type: "button", id: "ready", label: "Show me", key: "Enter" },
+        success: { speaker: "bolt", line: "Tools! I love tools." },
+        hint: {
+          bolt: "Click the button to start!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Win and Space opens the Omarchy menu.", "Look, but don't click anything yet."],
+        combo: ["Win", "Space"],
+        expect: { type: "menu", open: true, label: "Open the Omarchy menu." },
+        success: { speaker: "bolt", line: "So many tools!" },
+        hint: {
+          bolt: "Hold Win, then tap the long Space bar.",
+          keys: ["Win", "Space"],
+          demo: "Space is the long key at the bottom. Hold Win and tap it."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Esc closes a menu without picking anything."],
+        combo: ["Esc"],
+        expect: { type: "menu", open: false, label: "Close the menu." },
+        success: { speaker: "glitch", line: "Hey, I was reading that!" },
+        hint: {
+          bolt: "Esc is the top left key.",
+          keys: ["Esc"],
+          demo: "Tap Esc once. The menu goes away."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["Win, Alt, and Space shows all your apps.", "Pick any app and tap Enter."],
+        combo: ["Win", "Alt", "Space"],
+        expect: { type: "window", action: "open", app: "any", label: "Open an app from the list." },
+        success: { speaker: "bolt", line: "It worked! You opened an app." },
+        hint: {
+          bolt: "Hold Win and Alt. Then tap Space.",
+          keys: ["Win", "Alt", "Space"],
+          demo: "Use the arrow keys to pick an app. Then tap Enter."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Close the app when you're done."],
+        combo: ["Win", "W"],
+        expect: { type: "window", action: "close", app: "any", label: "Close the app." },
+        success: { speaker: "glitch", line: "Hmph. I bet you can't remember every key." },
+        hint: {
+          bolt: "Win and W closes it.",
+          keys: ["Win", "W"],
+          demo: "Click the app first. Then hold Win and tap W."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["You don't have to remember them all.", "Win and K shows a list of every key."],
+        combo: ["Win", "K"],
+        expect: { type: "menu", open: true, label: "Open the list of keys." },
+        success: { speaker: "glitch", line: "No fair! You found the list." },
+        hint: {
+          bolt: "Hold Win, then tap K.",
+          keys: ["Win", "K"],
+          demo: "K is in the middle row of letters. Hold Win and tap K."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Esc closes the list too."],
+        combo: ["Esc"],
+        expect: { type: "menu", open: false, label: "Close the list." },
+        success: { speaker: "bolt", line: "Easy peasy." },
+        hint: {
+          bolt: "Esc is the top left key.",
+          keys: ["Esc"],
+          demo: "Tap Esc once."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Your toolkit is ready, {codename}.", "Just two more missions to White Hat."],
+        expect: { type: "button", id: "finish", label: "Finish mission", key: "Enter" },
+        success: { speaker: "bolt", line: "Toolkit expert {codename}! Beep boop!" },
+        hint: {
+          bolt: "Click the button. You know how!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      }
+    ]
   }
 ]
 

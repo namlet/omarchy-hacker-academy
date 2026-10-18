@@ -129,7 +129,7 @@ function windowAddress(address) {
 }
 
 // A window opening, closing, taking the keyboard, floating, going full screen, or
-// moving to another workspace, or the learner switching workspaces, from
+// moving to another workspace, the learner switching workspaces, or a menu, from
 // Hyprland's raw events; null for anything else.
 // openwindow data is "address,workspace,class,title" (the title may contain commas);
 // closewindow data is "address".
@@ -144,6 +144,10 @@ function windowEvent(event) {
   // The window that hears the keyboard; empty when none does.
   if (name === "activewindowv2")
     return { action: "focus", address: windowAddress(parts[0]), app: "" }
+  // One of Omarchy's menus (the Omarchy menu, the apps list, the keybindings sheet)
+  // opened or closed. They all share one layer, so the step says which it wants.
+  if ((name === "openlayer" || name === "closelayer") && parts[0] === "omarchy-menu")
+    return { action: "menu", on: name === "openlayer", address: "", app: "" }
   // The learner switched to another workspace ("id,name").
   if (name === "workspacev2" && parts[0] !== "")
     return { action: "workspace", workspace: Number(parts[0]), address: "", app: "" }
