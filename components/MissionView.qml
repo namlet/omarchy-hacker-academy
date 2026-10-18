@@ -5,6 +5,7 @@ import "../Engine.js" as Engine
 import "../Missions.js" as Missions
 import "../Model.js" as Model
 import "../Theme.js" as Theme
+import "../Sprites.js" as Sprites
 
 // Plays missions in a terminal-style window: a title bar, the progress strip, the
 // mission header, who's talking, the task, and a key bar. Rank-ups get their own
@@ -239,37 +240,50 @@ FocusScope {
     border.color: root.rankUp ? root.theme.rank : root.onDesktop ? root.theme.accent : root.theme.line
   }
 
-  // A key cap in the key bar, with what it does.
-  component KeyHint: Row {
+  // A key cap in the key bar, with what it does; clickable too.
+  component KeyHint: Item {
     id: hint
     property string key: ""
     property string action: ""
-    spacing: root.f * 0.4
+    signal clicked()
+    implicitWidth: hintRow.implicitWidth
+    implicitHeight: hintRow.implicitHeight
 
-    Rectangle {
-      width: keyText.implicitWidth + root.f * 0.6
-      height: keyText.implicitHeight + root.f * 0.1
-      anchors.verticalCenter: parent.verticalCenter
-      color: "transparent"
-      border.width: 1
-      border.color: root.theme.faint
+    Row {
+      id: hintRow
+      spacing: root.f * 0.4
+
+      Rectangle {
+        width: keyText.implicitWidth + root.f * 0.6
+        height: keyText.implicitHeight + root.f * 0.1
+        anchors.verticalCenter: parent.verticalCenter
+        color: "transparent"
+        border.width: 1
+        border.color: root.theme.faint
+
+        Text {
+          id: keyText
+          anchors.centerIn: parent
+          text: hint.key
+          color: root.theme.text
+          font.family: root.fontFamily
+          font.pixelSize: root.f * 0.7
+        }
+      }
 
       Text {
-        id: keyText
-        anchors.centerIn: parent
-        text: hint.key
-        color: root.theme.text
+        anchors.verticalCenter: parent.verticalCenter
+        text: hint.action
+        color: root.theme.quiet
         font.family: root.fontFamily
-        font.pixelSize: root.f * 0.7
+        font.pixelSize: root.f * 0.72
       }
     }
 
-    Text {
-      anchors.verticalCenter: parent.verticalCenter
-      text: hint.action
-      color: root.theme.quiet
-      font.family: root.fontFamily
-      font.pixelSize: root.f * 0.72
+    MouseArea {
+      anchors.fill: parent
+      cursorShape: Qt.PointingHandCursor
+      onClicked: hint.clicked()
     }
   }
 
@@ -339,7 +353,7 @@ FocusScope {
           anchors.verticalCenter: parent.verticalCenter
           visible: !root.onDesktop && root.rank !== ""
           width: chipRow.implicitWidth + root.f * 0.9
-          height: root.f * 1.5
+          height: Math.max(root.f * 1.5, 25)
           color: "transparent"
           border.width: 1
           border.color: root.theme.done
@@ -351,10 +365,11 @@ FocusScope {
 
             PixelSprite {
               anchors.verticalCenter: parent.verticalCenter
-              width: root.f * 0.9
-              height: root.f * 0.95
-              sprite: "recruitBadge"
-              flat: root.theme.done
+              width: 20
+              height: 21
+              sprite: Sprites.BADGES[root.rank] || ""
+              theme: root.theme
+              mode: root.characterColors
             }
 
             Text {
@@ -1050,14 +1065,10 @@ FocusScope {
 
         KeyHint {
           objectName: "closeButton"
+          anchors.verticalCenter: parent.verticalCenter
           key: "ESC"
           action: "close"
-
-          MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.exitRequested()
-          }
+          onClicked: root.exitRequested()
         }
 
         Text {
