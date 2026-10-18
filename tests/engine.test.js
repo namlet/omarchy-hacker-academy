@@ -339,12 +339,85 @@ test("mission 0 can be completed with the real script, keyboard only", () => {
 test("every step has a speaker, 1-2 lines, a known expectation, and full help", () => {
   for (const mission of MISSIONS) {
     for (const step of mission.steps) {
-      assert.ok(["mentor", "bolt"].includes(step.speaker))
+      assert.ok(["mentor", "bolt", "glitch"].includes(step.speaker))
       assert.ok(step.lines.length >= 1 && step.lines.length <= 2)
-      assert.ok(["button", "key", "codename", "pointer", "anykey", "hold", "capital", "tap", "window"].includes(step.expect.type))
+      assert.ok(["button", "key", "codename", "pointer", "anykey", "hold", "capital", "tap", "window", "focus", "fullscreen"].includes(step.expect.type))
       assert.ok(step.hint.bolt && step.hint.demo && Array.isArray(step.hint.keys))
-      assert.ok(["mentor", "bolt"].includes(step.success.speaker) && step.success.line)
-      if (step.expect.type === "window") assert.ok(step.combo && step.combo.length >= 2, "a window step shows its keys")
+      assert.ok(["mentor", "bolt", "glitch"].includes(step.success.speaker) && step.success.line)
+      if (["window", "focus", "fullscreen"].includes(step.expect.type)) assert.ok(step.combo && step.combo.length >= 2, "a desktop step shows its keys")
     }
   }
+})
+
+// ---------------------------------------------------------------- the spotlight
+
+function spotlight() {
+  const step = (expect, extra) => Object.assign({ expect }, extra || {})
+  const two = { needs: { app: "terminal", count: 2 } }
+  return [{ steps: [
+    step({ type: "window", action: "open", app: "terminal", times: 2 }),
+    step({ type: "focus" }, two),
+    step({ type: "fullscreen", on: true }, two),
+    step({ type: "fullscreen", on: false }, two),
+    step({ type: "window", action: "close", app: "terminal", times: 2 })
+  ] }]
+}
+
+// Events arrive together, as from Hyprland; the celebration (and moving on) happens
+// after them, as it does on screen two seconds later.
+function play(missions, events, session) {
+  let s = session || Engine.startMission(0)
+  for (const e of events) s = Engine.handle(missions, s, Object.assign({ type: "window" }, e))
+  return s.celebrating ? Engine.finishCelebration(missions, s) : s
+}
+
+test("a step can ask for two windows, and counts them", () => {
+  const m = spotlight()
+  let s = play(m, [{ action: "open", address: "a", app: "terminal" }])
+  assert.deepEqual([s.step, s.count], [0, 1])
+  s = play(m, [{ action: "open", address: "b", app: "browser" }], s)
+  assert.equal(s.count, 1, "a browser isn't a terminal")
+  s = play(m, [{ action: "open", address: "b", app: "terminal" }], s)
+  assert.equal(s.step, 1)
+})
+
+test("moving the spotlight counts only onto another of the learner's windows", () => {
+  const m = spotlight()
+  let s = play(m, [
+    { action: "open", address: "a", app: "terminal" }, { action: "focus", address: "a" },
+    { action: "open", address: "b", app: "terminal" }, { action: "focus", address: "b" }])
+  assert.equal(s.step, 1, "the new terminal taking the spotlight, mid-celebration, doesn't count")
+  s = play(m, [{ action: "focus", address: "b" }], s)
+  assert.equal(s.step, 1, "the same window again (a title change) isn't a move")
+  s = play(m, [{ action: "focus", address: "grownups" }], s)
+  assert.equal(s.step, 1, "someone else's window doesn't count")
+  s = play(m, [{ action: "focus", address: "a" }], s)
+  assert.equal(s.step, 2)
+})
+
+test("full screen counts for the learner's window, on and then off", () => {
+  const m = spotlight()
+  let s = play(m, [{ action: "open", address: "a", app: "terminal" }, { action: "open", address: "b", app: "terminal" }, { action: "focus", address: "b" }])
+  s = play(m, [{ action: "focus", address: "a" }], s)
+  assert.equal(s.step, 2)
+  s = play(m, [{ action: "fullscreen", on: false }], s)
+  assert.equal(s.step, 2, "turning it off first isn't the task")
+  s = play(m, [{ action: "fullscreen", on: true }], s)
+  s = play(m, [{ action: "fullscreen", on: false }], s)
+  assert.equal(s.step, 4)
+  s = play(m, [{ action: "focus", address: "grownups" }, { action: "fullscreen", on: true }], s)
+  assert.equal(s.step, 4)
+  s = play(m, [{ action: "close", address: "a" }, { action: "close", address: "grownups" }], s)
+  assert.deepEqual([s.step, s.count], [4, 1], "only the learner's windows count as closed")
+  s = play(m, [{ action: "close", address: "b" }], s)
+  assert.ok(s.done)
+})
+
+test("a step that needs the learner's windows resumes where they get opened", () => {
+  const m = spotlight()
+  const at = (step) => ({ version: 1, codename: "Zero", completed: [], current: { mission: 0, step, codename: "Zero" } })
+  assert.equal(Engine.resume(m, at(3)).step, 0, "no terminals left after logging out")
+  const previous = Object.assign(Engine.startMission(0), { windows: [{ address: "a", app: "terminal" }, { address: "b", app: "terminal" }], focused: "a" })
+  const s = Engine.resume(m, at(3), previous)
+  assert.deepEqual([s.step, s.focused], [3, "a"], "both still open: carry on")
 })

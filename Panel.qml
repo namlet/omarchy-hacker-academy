@@ -101,7 +101,8 @@ Item {
     // Stay clear of the bar when sitting in a corner.
     exclusionMode: ExclusionMode.Normal
     WlrLayershell.namespace: "hacker-academy"
-    WlrLayershell.layer: WlrLayer.Top
+    // Desktop missions sit above full-screen windows, so the next step stays in sight.
+    WlrLayershell.layer: view.stage === "corner" ? WlrLayer.Overlay : WlrLayer.Top
     // Keyboard missions hold the keyboard so a drifting pointer can't take it
     // (Omarchy focuses whatever is under the mouse); desktop missions let go.
     WlrLayershell.keyboardFocus: view.keyboardFocus === "exclusive" ? WlrKeyboardFocus.Exclusive

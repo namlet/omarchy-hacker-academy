@@ -135,3 +135,11 @@ test("terminals and browsers are recognised like Omarchy tags them", () => {
   for (const c of ["org.gnome.Nautilus", "footclient-ish", "chromium-app", ""])
     assert.equal(Model.appKind(c), "", c)
 })
+
+test("focus and full screen come from Hyprland's raw events", () => {
+  assert.deepEqual(Model.windowEvent({ name: "activewindowv2", data: "5cdbbf578f00" }), { action: "focus", address: "5cdbbf578f00", app: "" })
+  assert.deepEqual(Model.windowEvent({ name: "activewindowv2", data: "" }), { action: "focus", address: "", app: "" })
+  assert.equal(Model.windowEvent({ name: "fullscreen", data: "1" }).on, true)
+  assert.equal(Model.windowEvent({ name: "fullscreen", data: "0" }).on, false)
+  assert.equal(Model.windowEvent({ name: "activewindow", data: "foot,~" }), null, "the older event is ignored")
+})
