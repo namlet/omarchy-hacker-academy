@@ -341,10 +341,10 @@ test("every step has a speaker, 1-2 lines, a known expectation, and full help", 
     for (const step of mission.steps) {
       assert.ok(["mentor", "bolt", "glitch"].includes(step.speaker))
       assert.ok(step.lines.length >= 1 && step.lines.length <= 2)
-      assert.ok(["button", "key", "codename", "pointer", "anykey", "hold", "capital", "tap", "window", "focus", "fullscreen", "swap", "float", "move", "resize"].includes(step.expect.type))
+      assert.ok(["button", "key", "codename", "pointer", "anykey", "hold", "capital", "tap", "window", "focus", "fullscreen", "swap", "float", "move", "resize", "workspace", "carry"].includes(step.expect.type))
       assert.ok(step.hint.bolt && step.hint.demo && Array.isArray(step.hint.keys))
       assert.ok(["mentor", "bolt", "glitch"].includes(step.success.speaker) && step.success.line)
-      if (["window", "focus", "fullscreen", "swap", "float", "move", "resize"].includes(step.expect.type)) assert.ok(step.combo && step.combo.length >= 2, "a desktop step shows its keys")
+      if (["window", "focus", "fullscreen", "swap", "float", "move", "resize", "workspace", "carry"].includes(step.expect.type)) assert.ok(step.combo && step.combo.length >= 2, "a desktop step shows its keys")
     }
   }
 })
@@ -467,5 +467,26 @@ test("floating, dragging, resizing, and tiling again each count once, for the le
   s = play(m, [at("b", 300, 200, 960, 1044, true), at("b", 300, 200, 1100, 1044, true)], s)
   assert.equal(s.step, 5)
   s = play(m, [{ action: "float", address: "b", on: false }], s)
+  assert.ok(s.done)
+})
+
+// ---------------------------------------------------------------- secret rooms
+
+test("going to a room, and carrying the learner's own window there", () => {
+  const m = [{ steps: [
+    { expect: { type: "workspace", to: "room" } },
+    { expect: { type: "workspace", to: "home" } },
+    { expect: { type: "window", action: "open", app: "terminal" } },
+    { needs: { app: "terminal", count: 1 }, expect: { type: "carry", to: "room" } }
+  ] }]
+  let s = play(m, [{ action: "workspace", room: "other" }])
+  assert.equal(s.step, 0, "the wrong room doesn't count")
+  s = play(m, [{ action: "workspace", room: "room" }], s)
+  s = play(m, [{ action: "workspace", room: "home" }], s)
+  s = play(m, [{ action: "open", address: "a", app: "terminal" }], s)
+  assert.equal(s.step, 3)
+  s = play(m, [{ action: "carry", address: "grownups", room: "room" }, { action: "carry", address: "a", room: "other" }], s)
+  assert.equal(s.step, 3, "someone else's window, or another room, doesn't count")
+  s = play(m, [{ action: "carry", address: "a", room: "room" }], s)
   assert.ok(s.done)
 })

@@ -30,10 +30,29 @@ Item {
     const ws = Hyprland.focusedWorkspace
     if (ws && view.needsOwnWorkspace(ws.toplevels.values.map(function(t) { return t.address })))
       Hyprland.dispatch('hl.dsp.focus({ workspace = "empty" })')
+    roomTimer.restart()
     // The window maps after open() returns; take keyboard focus once it exists.
     Qt.callLater(function() {
       if (root.opened) view.focusTask()
     })
+  }
+
+  // Home is the workspace the Academy plays on; the secret room is the lowest-numbered
+  // empty one from 2 to 9, so the learner never visits a grown-up's windows.
+  function pickRooms() {
+    const home = Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 0
+    const busy = Hyprland.workspaces.values.filter(function(w) { return w.toplevels.values.length > 0 }).map(function(w) { return w.id })
+    let room = 0
+    for (let n = 2; n <= 9 && room === 0; n++) if (n !== home && busy.indexOf(n) === -1) room = n
+    view.homeRoom = home
+    view.secretRoom = room
+  }
+
+  // Pick the rooms once the move to an empty workspace has settled.
+  Timer {
+    id: roomTimer
+    interval: 500
+    onTriggered: root.pickRooms()
   }
 
   function close() {

@@ -31,6 +31,10 @@ FocusScope {
   signal exitRequested()
 
   property var session: Engine.startMission(0)
+  // Workspaces are rooms: home is where the Academy plays, the secret room an empty
+  // one nearby. The panel picks them when it opens; 0 until then.
+  property int homeRoom: 0
+  property int secretRoom: 0
   property var keys: Model.initialPressedState()
   property bool showingSettings: false
   property bool confirmingReset: false
@@ -53,7 +57,7 @@ FocusScope {
   // the pointer resting on this window can't pull focus away from them.
   readonly property string keyboardFocus: root.desktopTask ? "none" : "exclusive"
   // Steps done on the real desktop with Omarchy's shortcuts.
-  readonly property bool desktopTask: ["window", "focus", "fullscreen", "swap", "float", "move", "resize"].indexOf(root.expectType) !== -1
+  readonly property bool desktopTask: ["window", "focus", "fullscreen", "swap", "float", "move", "resize", "workspace", "carry"].indexOf(root.expectType) !== -1
   // Which step is being played, as text that changes whenever the step does.
   readonly property string stepKey: root.session.mission + ":" + root.session.step
   // Steps whose action sends no event: the panel reports window positions meanwhile.
@@ -115,7 +119,9 @@ FocusScope {
   // or going full screen can finish a step.
   function windowEvent(event) {
     const w = Model.windowEvent(event)
-    if (w) root.handle({ type: "window", action: w.action, address: w.address, app: w.app, on: w.on })
+    const room = w && w.workspace !== undefined
+      ? (w.workspace === root.homeRoom ? "home" : w.workspace === root.secretRoom ? "room" : "other") : undefined
+    if (w) root.handle({ type: "window", action: w.action, address: w.address, app: w.app, on: w.on, room: room })
   }
 
   // Where a window is: {address, at: [x, y], size: [w, h], floating}, from Hyprland.
@@ -205,6 +211,13 @@ FocusScope {
   function toggleCharacterColors() {
     root.progress = Engine.withSettings(root.progress, { characterColors: root.characterColors === "theme" ? "classic" : "theme" })
     root.progressSaved(root.progress)
+  }
+
+  // Mission text with the codename and room numbers filled in.
+  function say(text) {
+    return Engine.render(text, root.codename)
+      .replace(/\{home\}/g, root.homeRoom > 0 ? root.homeRoom : "?")
+      .replace(/\{room\}/g, root.secretRoom > 0 ? root.secretRoom : "?")
   }
 
   // Lines as rich text, with the blinking cursor at the end.
@@ -578,7 +591,7 @@ FocusScope {
               width: parent.width
               anchors.verticalCenter: parent.verticalCenter
               textFormat: Text.StyledText
-              text: root.step ? root.withCaret(Engine.render(root.step.lines.join("\n"), root.codename)) : ""
+              text: root.step ? root.withCaret(root.say(root.step.lines.join("\n"))) : ""
               color: root.theme.text
               font.family: root.fontFamily
               font.pixelSize: root.f * (root.onDesktop ? 0.95 : 1.25)
@@ -591,7 +604,7 @@ FocusScope {
               visible: root.celebrating
               width: parent.width
               anchors.verticalCenter: parent.verticalCenter
-              text: root.step && root.celebrating ? Engine.render(root.step.success.line, root.codename) : ""
+              text: root.step && root.celebrating ? root.say(root.step.success.line) : ""
               color: root.theme.done
               font.family: root.fontFamily
               font.pixelSize: root.f * (root.onDesktop ? 0.95 : 1.25)
@@ -698,7 +711,7 @@ FocusScope {
                     Text {
                       id: instruction
                       objectName: "instruction"
-                      text: root.step && root.step.expect.label ? root.step.expect.label : ""
+                      text: root.step && root.step.expect.label ? root.say(root.step.expect.label) : ""
                       color: root.theme.text
                       font.family: root.fontFamily
                       font.pixelSize: root.f * 1.1
@@ -777,7 +790,7 @@ FocusScope {
 
                       Rectangle {
                         id: comboCap
-                        objectName: "combo-" + comboKey.modelData
+                        objectName: "combo-" + root.say(comboKey.modelData)
                         property bool lit: root.celebrating || root.session.hint >= 2
                         width: Math.max(comboLabel.implicitWidth + root.f * 1.2, root.f * 3)
                         height: root.f * 2.3
@@ -796,7 +809,7 @@ FocusScope {
                         Text {
                           id: comboLabel
                           anchors.centerIn: parent
-                          text: comboKey.modelData.toUpperCase()
+                          text: root.say(comboKey.modelData).toUpperCase()
                           color: comboCap.lit ? root.theme.bars : root.theme.text
                           font.family: root.fontFamily
                           font.pixelSize: root.f * 0.85
@@ -974,7 +987,7 @@ FocusScope {
                 objectName: "boltHint"
                 width: parent.width
                 visible: root.step !== null && !root.celebrating && root.session.hint >= 1
-                text: root.step ? "Bolt: " + root.step.hint.bolt : ""
+                text: root.step ? "Bolt: " + root.say(root.step.hint.bolt) : ""
                 color: root.theme.cyan
                 font.family: root.fontFamily
                 font.pixelSize: root.f * (root.onDesktop ? 0.8 : 0.95)
@@ -985,7 +998,7 @@ FocusScope {
                 objectName: "demoHint"
                 width: parent.width
                 visible: root.step !== null && !root.celebrating && root.session.hint >= 3
-                text: root.step ? "Mentor: " + root.step.hint.demo : ""
+                text: root.step ? "Mentor: " + root.say(root.step.hint.demo) : ""
                 color: root.theme.text
                 font.family: root.fontFamily
                 font.pixelSize: root.f * (root.onDesktop ? 0.8 : 0.95)
@@ -1046,7 +1059,7 @@ FocusScope {
           level: Missions.CAMPAIGN.ranks.findIndex(function(r) { return r.name === rankUpView.rank }) + 1
           previousRank: rankUpView.level > 1 ? Missions.CAMPAIGN.ranks[rankUpView.level - 2].name : ""
           rankNames: Missions.CAMPAIGN.ranks.map(function(r) { return r.name })
-          line: root.step ? (root.celebrating ? Engine.render(root.step.success.line, root.codename) : Engine.render(root.step.lines.join(" "), root.codename)) : ""
+          line: root.step ? (root.celebrating ? root.say(root.step.success.line) : root.say(root.step.lines.join(" "))) : ""
           unlocks: [Missions.UI.accessLevel.replace("{level}", rankUpView.level), Missions.UI.badgeAdded.replace("{rank}", rankUpView.rank)]
           buttonId: root.step && root.step.expect.id ? root.step.expect.id : ""
           buttonLabel: root.step && root.step.expect.label ? root.step.expect.label : ""

@@ -148,3 +148,8 @@ test("floating comes from Hyprland's raw events", () => {
   assert.deepEqual(Model.windowEvent({ name: "changefloatingmode", data: "5cdbbfaf53c0,1" }), { action: "float", address: "5cdbbfaf53c0", on: true, app: "" })
   assert.equal(Model.windowEvent({ name: "changefloatingmode", data: "5cdbbfaf53c0,0" }).on, false)
 })
+
+test("switching workspaces and carrying windows come from Hyprland's raw events", () => {
+  assert.deepEqual(Model.windowEvent({ name: "workspacev2", data: "8,8" }), { action: "workspace", workspace: 8, address: "", app: "" })
+  assert.deepEqual(Model.windowEvent({ name: "movewindowv2", data: "5cdbbfae7dc0,8,8" }), { action: "carry", address: "5cdbbfae7dc0", workspace: 8, app: "" })
+})
