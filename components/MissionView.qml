@@ -51,6 +51,8 @@ FocusScope {
   property bool caretOn: true
 
   readonly property bool finishedAll: root.session.mission >= root.missions.length
+  // Every mission of the part is built and done.
+  readonly property bool partDone: root.finishedAll && root.missions.length >= Missions.CAMPAIGN.titles.length
   readonly property var mission: root.finishedAll ? null : root.missions[root.session.mission]
   readonly property var step: root.finishedAll ? null : Engine.currentStep(root.missions, root.session)
   readonly property string stage: root.mission ? root.mission.stage : "center"
@@ -1095,8 +1097,8 @@ FocusScope {
           ranks: root.campaign
           part: Missions.CAMPAIGN.part
           nextPart: Missions.CAMPAIGN.nextPart
-          nextPartText: Missions.UI.nextPartLocked
-          message: Missions.UI.comingSoon
+          nextPartText: root.partDone ? Missions.UI.nextPartSoon : Missions.UI.nextPartLocked
+          message: root.partDone ? Missions.UI.partDone : Missions.UI.comingSoon
           badgesLabel: Missions.UI.badges
           lockedLabel: Missions.UI.locked
           theme: root.theme

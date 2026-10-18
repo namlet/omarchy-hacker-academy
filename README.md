@@ -4,7 +4,7 @@ An Omarchy shell plugin that teaches new users — starting with kids who have o
 
 The learner trains as a white-hat hacker recruit. Lessons ask them to do real things on the real desktop, and the Academy notices when they do. See [DESIGN.md](DESIGN.md) for the plan.
 
-> **Status: early.** Missions 0–8 are playable, from Recruitment to Lockdown. Mission 9 is coming. Lockdown locks the screen and logs out, so play it on the learner's own account. From mission 3 on, the Academy waits in a corner while the learner uses the real desktop: it opens and closes a terminal and a browser.
+> **Status: early.** Part 1, The Desktop, is playable: missions 0–9, from Recruitment to Rescue Protocol. Part 2, The Command Line, is coming. Lockdown logs out and Rescue Protocol closes every window, so play them on the learner's own account. From mission 3 on, the Academy waits in a corner while the learner uses the real desktop: it opens and closes a terminal and a browser.
 
 ## Install
 
