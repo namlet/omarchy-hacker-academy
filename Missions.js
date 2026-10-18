@@ -406,6 +406,124 @@ var MISSIONS = [
         }
       }
     ]
+  },
+  {
+    id: "rearranging",
+    title: "Rearranging HQ",
+    stage: "corner",
+    steps: [
+      {
+        speaker: "mentor",
+        lines: ["HQ is getting messy.", "Let's learn to move windows around."],
+        expect: { type: "button", id: "ready", label: "Show me", key: "Enter" },
+        success: { speaker: "glitch", line: "Messy? I can make it messier!" },
+        hint: {
+          bolt: "Click the button to start!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["We need two windows to play with.", "Open two terminals."],
+        combo: ["Win", "Enter"],
+        expect: { type: "window", action: "open", app: "terminal", times: 2, label: "Open two terminals." },
+        success: { speaker: "glitch", line: "Hee hee. Now watch this!" },
+        hint: {
+          bolt: "Win and Enter, two times.",
+          keys: ["Win", "Enter"],
+          demo: "Hold Win and tap Enter. Let go, then do it one more time."
+        }
+      },
+      {
+        speaker: "glitch",
+        lines: ["I put your windows in the wrong spots!", "Win, Shift, and an arrow swaps them."],
+        combo: ["Win", "Shift", "←"],
+        needs: { app: "terminal", count: 2 },
+        expect: { type: "swap", label: "Swap the two windows." },
+        success: { speaker: "bolt", line: "They traded places!" },
+        hint: {
+          bolt: "Hold Win and Shift. Then tap an arrow.",
+          keys: ["Win", "Shift"],
+          demo: "Hold Win and Shift with two fingers. Tap the left arrow with another."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Win and T lets a window float.", "It pops up on top of the others."],
+        combo: ["Win", "T"],
+        needs: { app: "terminal", count: 2 },
+        expect: { type: "float", on: true, label: "Make a window float." },
+        success: { speaker: "bolt", line: "Whoa, it's floating!" },
+        hint: {
+          bolt: "Hold Win, then tap T.",
+          keys: ["Win", "T"],
+          demo: "T is in the top row of letters. Hold Win and tap T."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Hold Win, then drag the window with the mouse.", "You can put it anywhere."],
+        combo: ["Win", "Drag"],
+        needs: { app: "terminal", count: 2 },
+        expect: { type: "move", label: "Drag the floating window." },
+        success: { speaker: "glitch", line: "Hey! Where did it go?" },
+        hint: {
+          bolt: "Keep Win down while you drag.",
+          keys: ["Win"],
+          demo: "Hold Win. Press the mouse button on the window and move it."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["Now make it bigger!", "Hold Win and drag with the right button."],
+        combo: ["Win", "Right drag"],
+        needs: { app: "terminal", count: 2 },
+        expect: { type: "resize", label: "Make the window bigger or smaller." },
+        success: { speaker: "mentor", line: "Big or small. You decide." },
+        hint: {
+          bolt: "Hold Win. Use the right mouse button this time.",
+          keys: ["Win"],
+          demo: "Hold Win. Press the right button on the window and drag."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Win and T again puts it back in line."],
+        combo: ["Win", "T"],
+        needs: { app: "terminal", count: 2 },
+        expect: { type: "float", on: false, label: "Put the window back in line." },
+        success: { speaker: "bolt", line: "Neat and tidy!" },
+        hint: {
+          bolt: "Same keys as before. Win and T!",
+          keys: ["Win", "T"],
+          demo: "Click the floating window. Then hold Win and tap T."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Hackers clean up when they're done.", "Close both terminals."],
+        combo: ["Win", "W"],
+        expect: { type: "window", action: "close", app: "terminal", times: 2, label: "Close both terminals." },
+        success: { speaker: "glitch", line: "You ruined my mess!" },
+        hint: {
+          bolt: "Win and W closes the window in the spotlight.",
+          keys: ["Win", "W"],
+          demo: "Hold Win and tap W. Then do it again for the other one."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["HQ is yours to arrange now.", "Nice moves, {codename}."],
+        expect: { type: "button", id: "finish", label: "Finish mission", key: "Enter" },
+        success: { speaker: "bolt", line: "Interior designer {codename}! Ha!" },
+        hint: {
+          bolt: "Click the button. You know how!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      }
+    ]
   }
 ]
 

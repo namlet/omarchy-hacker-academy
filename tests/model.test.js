@@ -143,3 +143,8 @@ test("focus and full screen come from Hyprland's raw events", () => {
   assert.equal(Model.windowEvent({ name: "fullscreen", data: "0" }).on, false)
   assert.equal(Model.windowEvent({ name: "activewindow", data: "foot,~" }), null, "the older event is ignored")
 })
+
+test("floating comes from Hyprland's raw events", () => {
+  assert.deepEqual(Model.windowEvent({ name: "changefloatingmode", data: "5cdbbfaf53c0,1" }), { action: "float", address: "5cdbbfaf53c0", on: true, app: "" })
+  assert.equal(Model.windowEvent({ name: "changefloatingmode", data: "5cdbbfaf53c0,0" }).on, false)
+})

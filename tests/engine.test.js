@@ -341,10 +341,10 @@ test("every step has a speaker, 1-2 lines, a known expectation, and full help", 
     for (const step of mission.steps) {
       assert.ok(["mentor", "bolt", "glitch"].includes(step.speaker))
       assert.ok(step.lines.length >= 1 && step.lines.length <= 2)
-      assert.ok(["button", "key", "codename", "pointer", "anykey", "hold", "capital", "tap", "window", "focus", "fullscreen"].includes(step.expect.type))
+      assert.ok(["button", "key", "codename", "pointer", "anykey", "hold", "capital", "tap", "window", "focus", "fullscreen", "swap", "float", "move", "resize"].includes(step.expect.type))
       assert.ok(step.hint.bolt && step.hint.demo && Array.isArray(step.hint.keys))
       assert.ok(["mentor", "bolt", "glitch"].includes(step.success.speaker) && step.success.line)
-      if (["window", "focus", "fullscreen"].includes(step.expect.type)) assert.ok(step.combo && step.combo.length >= 2, "a desktop step shows its keys")
+      if (["window", "focus", "fullscreen", "swap", "float", "move", "resize"].includes(step.expect.type)) assert.ok(step.combo && step.combo.length >= 2, "a desktop step shows its keys")
     }
   }
 })
@@ -420,4 +420,52 @@ test("a step that needs the learner's windows resumes where they get opened", ()
   const previous = Object.assign(Engine.startMission(0), { windows: [{ address: "a", app: "terminal" }, { address: "b", app: "terminal" }], focused: "a" })
   const s = Engine.resume(m, at(3), previous)
   assert.deepEqual([s.step, s.focused], [3, "a"], "both still open: carry on")
+})
+
+// ---------------------------------------------------------------- rearranging HQ
+
+function arranging() {
+  const two = { needs: { app: "terminal", count: 2 } }
+  return [{ steps: [
+    { expect: { type: "window", action: "open", app: "terminal", times: 2 } },
+    Object.assign({ expect: { type: "swap" } }, two),
+    Object.assign({ expect: { type: "float", on: true } }, two),
+    Object.assign({ expect: { type: "move" } }, two),
+    Object.assign({ expect: { type: "resize" } }, two),
+    Object.assign({ expect: { type: "float", on: false } }, two)
+  ] }]
+}
+
+const at = (address, x, y, w, h, floating) => ({ action: "geometry", address, at: [x, y], size: [w, h], floating: !!floating })
+
+test("swapping counts when a tiled window of the learner's moves to another spot", () => {
+  const m = arranging()
+  let s = play(m, [{ action: "open", address: "a", app: "terminal" }, { action: "open", address: "b", app: "terminal" }])
+  assert.equal(s.step, 1)
+  s = play(m, [at("a", 12, 12, 941, 1030), at("b", 967, 12, 941, 1030), at("grownups", 0, 0, 100, 100)], s)
+  s = play(m, [at("grownups", 900, 0, 100, 100), at("a", 30, 12, 941, 1030)], s)
+  assert.equal(s.step, 1, "someone else's window, or a nudge, doesn't count")
+  s = play(m, [at("a", 967, 12, 941, 1030)], s)
+  assert.equal(s.step, 2)
+})
+
+test("floating, dragging, resizing, and tiling again each count once, for the learner's window", () => {
+  const m = arranging()
+  let s = play(m, [{ action: "open", address: "a", app: "terminal" }, { action: "open", address: "b", app: "terminal" }])
+  s = play(m, [at("a", 12, 12, 941, 1030)], s)
+  s = play(m, [at("a", 967, 12, 941, 1030)], s)
+  assert.equal(s.step, 2)
+  s = play(m, [{ action: "float", address: "grownups", on: true }], s)
+  assert.equal(s.step, 2)
+  s = play(m, [{ action: "float", address: "b", on: true }], s)
+  assert.equal(s.step, 3)
+  // Floating moved the window; that was before this step, so it's the starting point.
+  s = play(m, [at("b", 5, 5, 960, 1044, true)], s)
+  assert.equal(s.step, 3, "where floating put it doesn't count as a drag")
+  s = play(m, [at("b", 300, 200, 960, 1044, true)], s)
+  assert.equal(s.step, 4)
+  s = play(m, [at("b", 300, 200, 960, 1044, true), at("b", 300, 200, 1100, 1044, true)], s)
+  assert.equal(s.step, 5)
+  s = play(m, [{ action: "float", address: "b", on: false }], s)
+  assert.ok(s.done)
 })
