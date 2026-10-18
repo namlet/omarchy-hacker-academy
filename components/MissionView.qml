@@ -1033,7 +1033,7 @@ FocusScope {
           rankNames: Missions.CAMPAIGN.ranks.map(function(r) { return r.name })
           line: root.step ? (root.celebrating ? Engine.render(root.step.success.line, root.codename) : Engine.render(root.step.lines.join(" "), root.codename)) : ""
           unlocks: [Missions.UI.accessLevel.replace("{level}", rankUpView.level), Missions.UI.badgeAdded.replace("{rank}", rankUpView.rank)]
-          buttonId: root.step ? root.step.expect.id : ""
+          buttonId: root.step && root.step.expect.id ? root.step.expect.id : ""
           buttonLabel: root.step && root.step.expect.label ? root.step.expect.label : ""
           celebrating: root.celebrating
           compact: root.onDesktop

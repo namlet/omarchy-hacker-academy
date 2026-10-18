@@ -537,6 +537,11 @@ Item {
       verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(4) !== -1)
     }
 
+    function test_steps_without_a_button_give_the_rank_up_no_button_name() {
+      startMissionFour(2)
+      compare(findChild(view, "rankUp").buttonId, "")
+    }
+
     function test_the_glitch_speaks_with_its_own_picture() {
       startMissionFour(1)
       compare(findChild(view, "portraitSprite").sprite, "glitch")
