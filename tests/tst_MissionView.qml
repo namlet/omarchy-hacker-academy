@@ -184,7 +184,7 @@ Item {
       view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2], current: null }
       view.begin()
       compare([view.session.mission, view.session.step], [3, 0])
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6], current: null }
       view.begin()
       verify(view.finishedAll)
       verify(findChild(view, "comingSoon").visible)
@@ -602,6 +602,55 @@ Item {
       verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(5) !== -1)
     }
 
+    // ------------------------------------------------------------ mission 6
+
+    function startMissionSix(step) {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5], current: { mission: 6, step: step, codename: "Zero" } }
+      view.begin()
+      view.homeRoom = 2
+      view.secretRoom = 3
+      wait(20)
+    }
+
+    function goTo(n) { view.windowEvent({ name: "workspacev2", data: n + "," + n }) }
+
+    function test_mission_six_end_to_end() {
+      startMissionSix(0)
+      const w = view.implicitWidth, h = view.implicitHeight
+      clickItem("button-ready")
+      waitForCelebration()
+
+      compare(findChild(view, "instruction").text, "Go to room 3.")
+      verify(findChild(view, "combo-3").visible, "the room's number is the key to press")
+      goTo(1)
+      verify(!view.celebrating, "the wrong room doesn't count")
+      goTo(3)
+      waitForCelebration()
+      goTo(2)
+      waitForCelebration()
+      windowOpens("t1", "foot")
+      waitForCelebration()
+      view.windowEvent({ name: "movewindowv2", data: "t1,3,3" })
+      waitForCelebration()
+      windowCloses("t1")
+      waitForCelebration()
+      goTo(2)
+      waitForCelebration()
+
+      verify(findChild(view, "rankUp").visible)
+      compare(findChild(view, "rankName").text, "SPECIALIST")
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+      clickItem("button-finish")
+      waitForCelebration()
+      verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(6) !== -1)
+    }
+
+    function test_rooms_show_a_question_mark_until_picked() {
+      startMissionSix(1)
+      view.secretRoom = 0
+      compare(findChild(view, "instruction").text, "Go to room ?.")
+    }
+
     function test_mission_three_keys_light_up_when_help_grows() {
       startMissionThree(1)
       verify(!findChild(view, "combo-Win").lit)
@@ -650,12 +699,12 @@ Item {
     }
 
     function test_the_map_shows_the_campaign_when_every_mission_is_done() {
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6], current: null }
       view.begin()
       wait(20)
       verify(findChild(view, "campaignMap").visible)
-      verify(findChild(view, "badge-Recruit").border.color === findChild(view, "badge-Agent").border.color, "both earned")
-      verify(findChild(view, "badge-Specialist").border.color !== findChild(view, "badge-Agent").border.color, "not yet earned")
+      verify(findChild(view, "badge-Recruit").border.color === findChild(view, "badge-Specialist").border.color, "both earned")
+      verify(findChild(view, "badge-White Hat").border.color !== findChild(view, "badge-Specialist").border.color, "not yet earned")
     }
 
     function test_character_colors_can_follow_the_theme() {
@@ -689,7 +738,7 @@ Item {
     }
 
     function test_nothing_to_skip_once_every_mission_is_done() {
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6], current: null }
       view.begin()
       clickItem("settingsButton")
       verify(!findChild(view, "settings-skip").visible)

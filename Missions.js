@@ -524,6 +524,109 @@ var MISSIONS = [
         }
       }
     ]
+  },
+  {
+    id: "secret-rooms",
+    title: "Secret Rooms",
+    stage: "corner",
+    steps: [
+      {
+        speaker: "mentor",
+        lines: ["HQ has secret rooms called workspaces.", "Each room keeps its own windows."],
+        expect: { type: "button", id: "ready", label: "Show me", key: "Enter" },
+        success: { speaker: "glitch", line: "Ooh, rooms! I found one to hide in." },
+        hint: {
+          bolt: "Click the button to start!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      },
+      {
+        speaker: "glitch",
+        lines: ["Come find me in room {room}!", "Win and {room} takes you there."],
+        combo: ["Win", "{room}"],
+        expect: { type: "workspace", to: "room", label: "Go to room {room}." },
+        success: { speaker: "glitch", line: "How did you get in here?!" },
+        hint: {
+          bolt: "Hold Win, then tap the {room} key.",
+          keys: ["Win"],
+          demo: "The number keys are in the top row. Hold Win and tap {room}."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["You are home in room {home}.", "Win and {home} takes you back."],
+        combo: ["Win", "{home}"],
+        expect: { type: "workspace", to: "home", label: "Go back to room {home}." },
+        success: { speaker: "bolt", line: "Home sweet home." },
+        hint: {
+          bolt: "Hold Win, then tap {home}.",
+          keys: ["Win"],
+          demo: "Hold Win and tap the {home} key in the top row."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["I want a window in the secret room.", "Open a terminal first."],
+        combo: ["Win", "Enter"],
+        expect: { type: "window", action: "open", app: "terminal", label: "Open a terminal." },
+        success: { speaker: "mentor", line: "Now carry it to the other room." },
+        hint: {
+          bolt: "Win and Enter. You know this one!",
+          keys: ["Win", "Enter"],
+          demo: "Hold Win and tap Enter. Then let go."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Win, Shift, and {room} carries the window there.", "You go along with it."],
+        combo: ["Win", "Shift", "{room}"],
+        needs: { app: "terminal", count: 1 },
+        expect: { type: "carry", to: "room", label: "Carry the terminal to room {room}." },
+        success: { speaker: "glitch", line: "Hey! That's my room!" },
+        hint: {
+          bolt: "Hold Win and Shift. Then tap {room}.",
+          keys: ["Win", "Shift"],
+          demo: "Hold Win and Shift with two fingers. Tap {room} with another."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["Let's tidy up the secret room.", "Close the terminal."],
+        combo: ["Win", "W"],
+        expect: { type: "window", action: "close", app: "terminal", label: "Close the terminal." },
+        success: { speaker: "glitch", line: "Fine. I'll find a new hiding spot." },
+        hint: {
+          bolt: "Win and W closes it.",
+          keys: ["Win", "W"],
+          demo: "Hold Win and tap W."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Now head home to room {home}."],
+        combo: ["Win", "{home}"],
+        expect: { type: "workspace", to: "home", label: "Go back to room {home}." },
+        success: { speaker: "bolt", line: "Back at HQ!" },
+        hint: {
+          bolt: "Hold Win, then tap {home}.",
+          keys: ["Win"],
+          demo: "Hold Win and tap the {home} key in the top row."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["You know every room in HQ now.", "You are a Specialist, {codename}."],
+        badge: "Specialist",
+        expect: { type: "button", id: "finish", label: "Finish mission", key: "Enter" },
+        success: { speaker: "bolt", line: "Specialist {codename}! That's so fancy!" },
+        hint: {
+          bolt: "Click the button. You know how!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      }
+    ]
   }
 ]
 

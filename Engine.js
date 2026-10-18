@@ -256,6 +256,13 @@ function handle(missions, session, event) {
   if (expect.type === "focus" && event.type === "window" && event.action === "focus"
       && event.address !== focusedBefore && ownWindow(session, event.address))
     return celebrate(session, {})
+  // Workspaces are rooms: the view names the one an event is about, "home" (where the
+  // Academy plays), "room" (the secret room), or "other".
+  if (expect.type === "workspace" && event.type === "window" && event.action === "workspace" && event.room === expect.to)
+    return celebrate(session, {})
+  if (expect.type === "carry" && event.type === "window" && event.action === "carry"
+      && event.room === expect.to && ownWindow(session, event.address))
+    return celebrate(session, {})
   // Floating on (or off) for one of the learner's windows.
   if (expect.type === "float" && event.type === "window" && event.action === "float"
       && event.on === expect.on && ownWindow(session, event.address))
