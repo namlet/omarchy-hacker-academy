@@ -1010,41 +1010,21 @@ FocusScope {
         }
 
         // Settings, for grown-ups: in the body's place, same window size.
-        Column {
+        SettingsView {
           objectName: "settings"
           visible: root.showingSettings
-          spacing: root.f
-
-          Repeater {
-            model: [
-              { id: "skip", label: "Skip this mission", enabled: !root.finishedAll },
-              { id: "colors", label: root.characterColors === "theme" ? Missions.UI.themeColors : Missions.UI.classicColors, enabled: true },
-              { id: "reset", label: root.confirmingReset ? "Click again to erase all progress" : "Reset all progress", enabled: true },
-              { id: "back", label: "Back", enabled: true }
-            ]
-
-            Text {
-              id: settingsItem
-              required property var modelData
-              objectName: "settings-" + settingsItem.modelData.id
-              visible: settingsItem.modelData.enabled
-              text: "> " + settingsItem.modelData.label
-              color: settingsItem.modelData.id === "reset" && root.confirmingReset ? root.theme.danger : root.theme.text
-              font.family: root.fontFamily
-              font.pixelSize: root.f
-
-              MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                  if (settingsItem.modelData.id === "skip") root.skipMission()
-                  else if (settingsItem.modelData.id === "colors") root.toggleCharacterColors()
-                  else if (settingsItem.modelData.id === "reset") root.resetProgress()
-                  else { root.showingSettings = false; root.focusTask() }
-                }
-              }
-            }
-          }
+          anchors.fill: parent
+          missionName: root.mission ? "Mission " + Engine.missionNumber(root.session.mission) + ": " + root.mission.title : ""
+          characterColors: root.characterColors
+          confirmingReset: root.confirmingReset
+          compact: root.onDesktop
+          theme: root.theme
+          fontFamily: root.fontFamily
+          fontSize: root.f
+          onSkip: root.skipMission()
+          onToggleColors: root.toggleCharacterColors()
+          onReset: root.resetProgress()
+          onBack: { root.showingSettings = false; root.focusTask() }
         }
       }
     }
