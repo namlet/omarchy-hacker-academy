@@ -540,6 +540,32 @@ Item {
       compare(view.progress.settings.characterColors, "theme", "a reset keeps the setting")
     }
 
+    function test_settings_back_returns_to_the_mission() {
+      clickItem("settingsButton")
+      verify(!findChild(view, "portrait").visible, "settings take the body's place")
+      clickItem("settings-back")
+      verify(!findChild(view, "settings").visible)
+      verify(findChild(view, "portrait").visible)
+    }
+
+    function test_settings_reset_asks_first_and_colors_show_the_choice() {
+      clickItem("settingsButton")
+      verify(findChild(view, "colors-classic").filled)
+      verify(!findChild(view, "colors-theme").filled)
+      clickItem("settings-colors")
+      verify(findChild(view, "colors-theme").filled)
+      clickItem("settings-reset")
+      verify(view.confirmingReset, "the first click only asks")
+      compare(view.session.mission, 0)
+    }
+
+    function test_nothing_to_skip_once_every_mission_is_done() {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3], current: null }
+      view.begin()
+      clickItem("settingsButton")
+      verify(!findChild(view, "settings-skip").visible)
+    }
+
     function test_settings_skip_and_reset() {
       clickItem("settingsButton")
       verify(findChild(view, "settings").visible)
