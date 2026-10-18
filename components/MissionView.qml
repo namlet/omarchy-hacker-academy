@@ -54,6 +54,8 @@ FocusScope {
   readonly property string keyboardFocus: root.desktopTask ? "none" : "exclusive"
   // Steps done on the real desktop with Omarchy's shortcuts.
   readonly property bool desktopTask: ["window", "focus", "fullscreen", "swap", "float", "move", "resize"].indexOf(root.expectType) !== -1
+  // Which step is being played, as text that changes whenever the step does.
+  readonly property string stepKey: root.session.mission + ":" + root.session.step
   // Steps whose action sends no event: the panel reports window positions meanwhile.
   readonly property bool watchesLayout: ["swap", "move", "resize"].indexOf(root.expectType) !== -1
   // Desktop missions sit small in a corner, out of the way of the real windows.
@@ -117,8 +119,14 @@ FocusScope {
   }
 
   // Where a window is: {address, at: [x, y], size: [w, h], floating}, from Hyprland.
+  // The numbers are copied: Quickshell's lists change in place when it refreshes, which
+  // would move a step's starting point along with the window.
   function windowGeometry(place) {
-    root.handle({ type: "window", action: "geometry", address: Model.windowAddress(place.address), at: place.at, size: place.size, floating: place.floating === true })
+    root.handle({
+      type: "window", action: "geometry", address: Model.windowAddress(place.address),
+      at: [Number(place.at[0]), Number(place.at[1])], size: [Number(place.size[0]), Number(place.size[1])],
+      floating: place.floating === true
+    })
   }
 
   // Given the addresses of the windows on the current workspace: should the Academy
