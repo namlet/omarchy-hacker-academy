@@ -337,6 +337,8 @@ var UI = {
   locked: "Locked",
   nextPartLocked: "Real hackers type their orders. Become a White Hat to open it.",
   progressSaved: "Progress saved",
+  caught: "Caught",
+  tapped: "Tapped",
   orEnter: "Tap Enter or click the button.",
   keepScrolling: "Keep scrolling down.",
   keepHolding: "Keep holding Shift!",

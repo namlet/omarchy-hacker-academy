@@ -229,7 +229,7 @@ Item {
         verify(!bug.visible, "caught bugs disappear")
       }
       verify(view.celebrating)
-      compare(findChild(view, "tally").text, "5 of 5")
+      compare(findChild(view, "tally").text, "5/5")
     }
 
     // Drag like a hand: press on the bug, move across the playground (which stays put), let go.
@@ -240,6 +240,19 @@ Item {
       for (let i = 1; i <= 8; i++)
         mouseMove(area, from.x + (toX - from.x) * i / 8, from.y + (toY - from.y) * i / 8, 10)
       mouseRelease(area, toX, toY)
+    }
+
+    function test_the_meter_fills_as_bugs_are_caught() {
+      startMissionOne()
+      view.session = Object.assign({}, view.session, { step: 1 })
+      wait(20)
+      verify(findChild(view, "meter").visible)
+      compare(findChild(view, "tally").text, "0/5")
+      mouseClick(target("bug1"))
+      compare(findChild(view, "tally").text, "1/5")
+      view.session = Object.assign({}, view.session, { step: 0, hits: [] })
+      wait(20)
+      verify(!findChild(view, "meter").visible, "one thing to do needs no meter")
     }
 
     function test_mission_one_drag_misses_then_lands_in_the_jar() {
@@ -330,7 +343,7 @@ Item {
       keyClick(Qt.Key_Shift)
       for (const k of [Qt.Key_H, Qt.Key_A, Qt.Key_C, Qt.Key_K]) keyClick(k)
       verify(!view.celebrating)
-      compare(findChild(view, "tally").text, "4 of 5")
+      compare(findChild(view, "tally").text, "4/5")
       keyClick(Qt.Key_S)
       verify(view.celebrating)
       compare(findChild(view, "typed").text, "h a c k s")
