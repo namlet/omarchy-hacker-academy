@@ -12,8 +12,30 @@ var CODENAME_MAX = 16
 
 // completed: finished mission numbers. current: where an unfinished mission was left
 // ({mission, step, codename}), so closing the Academy mid-mission resumes there.
-function newProgress() {
-  return { version: PROGRESS_VERSION, codename: "", completed: [], current: null }
+// settings: grown-up choices, kept when progress is reset.
+function newProgress(settings) {
+  return { version: PROGRESS_VERSION, codename: "", completed: [], current: null, settings: settings || defaultSettings() }
+}
+
+// characterColors: "classic" (each character's own colors) or "theme" (follow the theme).
+function defaultSettings() {
+  return { characterColors: "classic" }
+}
+
+function settingsOf(progress) {
+  var s = progress && progress.settings
+  return { characterColors: s && s.characterColors === "theme" ? "theme" : "classic" }
+}
+
+function withSettings(progress, changes) {
+  var settings = settingsOf(progress)
+  for (var k in changes) settings[k] = changes[k]
+  return withChanges(progress, { settings: settingsOf({ settings: settings }) })
+}
+
+// Erase the learner's progress, keeping the grown-up's settings.
+function resetProgress(progress) {
+  return newProgress(settingsOf(progress))
 }
 
 // Saved progress is user-editable text, so anything unexpected starts fresh.
@@ -29,7 +51,7 @@ function parseProgress(text) {
   var current = c && Number.isInteger(c.mission) && c.mission >= 0 && Number.isInteger(c.step) && c.step >= 0
     ? { mission: c.mission, step: c.step, codename: typeof c.codename === "string" && isValidCodename(c.codename) ? c.codename.trim() : "" }
     : null
-  return { version: PROGRESS_VERSION, codename: codename, completed: completed, current: current }
+  return { version: PROGRESS_VERSION, codename: codename, completed: completed, current: current, settings: settingsOf(p) }
 }
 
 function serializeProgress(progress) {
@@ -45,7 +67,7 @@ function nextMission(missions, progress) {
 
 function completeMission(progress, index, codename) {
   var completed = progress.completed.indexOf(index) === -1 ? progress.completed.concat([index]) : progress.completed
-  return { version: PROGRESS_VERSION, codename: codename !== undefined ? codename : progress.codename, completed: completed, current: null }
+  return { version: PROGRESS_VERSION, codename: codename !== undefined ? codename : progress.codename, completed: completed, current: null, settings: settingsOf(progress) }
 }
 
 // Remember the step a learner reached, so they can close the Academy and come back.
@@ -54,8 +76,48 @@ function rememberStep(progress, session) {
     version: PROGRESS_VERSION,
     codename: progress.codename,
     completed: progress.completed,
-    current: { mission: session.mission, step: session.step, codename: session.codename }
+    current: { mission: session.mission, step: session.step, codename: session.codename },
+    settings: settingsOf(progress)
   }
+}
+
+// ---------------------------------------------------------------- campaign
+
+// The rank held: the last one whose first mission is done, or -1 before the first.
+function rankIndex(campaign, progress) {
+  var held = -1
+  campaign.ranks.forEach(function(rank, i) { if (progress.completed.indexOf(rank.missions[0]) !== -1) held = i })
+  return held
+}
+
+// The ranks with each mission's state, for the progress strip and the map:
+// "done", "now" (the mission being played, `current`), or "locked".
+function campaignView(campaign, progress, current) {
+  return campaign.ranks.map(function(rank) {
+    return {
+      name: rank.name,
+      earned: progress.completed.indexOf(rank.missions[0]) !== -1,
+      missions: rank.missions.map(function(n) {
+        return {
+          number: n,
+          title: campaign.titles[n],
+          state: progress.completed.indexOf(n) !== -1 ? "done" : n === current ? "now" : "locked"
+        }
+      })
+    }
+  })
+}
+
+// One state per step of the mission being played; a step being celebrated is done.
+function stepStates(count, step, celebrating) {
+  var out = []
+  for (var i = 0; i < count; i++) out.push(i < step || (i === step && celebrating) ? "done" : i === step ? "now" : "todo")
+  return out
+}
+
+// "07": mission numbers are shown as two digits.
+function missionNumber(n) {
+  return (n < 10 ? "0" : "") + n
 }
 
 // The session to start with: the remembered step if it belongs to the next mission, else its start.
@@ -223,6 +285,14 @@ if (typeof module !== "undefined") {
     serializeProgress: serializeProgress,
     nextMission: nextMission,
     completeMission: completeMission,
+    defaultSettings: defaultSettings,
+    settingsOf: settingsOf,
+    withSettings: withSettings,
+    resetProgress: resetProgress,
+    rankIndex: rankIndex,
+    campaignView: campaignView,
+    stepStates: stepStates,
+    missionNumber: missionNumber,
     rememberStep: rememberStep,
     resume: resume,
     isValidCodename: isValidCodename,

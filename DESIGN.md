@@ -24,6 +24,8 @@ The learner is a new recruit at a secret school for white-hat hackers hidden ins
 - **The Glitch,** a mischievous pixel bug, scrambles windows and hides things from mission 4 on. Annoying, never scary.
 - **The learner** picks a codename and rises through four ranks: Recruit (missions 0–2), Agent (3–5), Specialist (6–8), and White Hat at graduation.
 
+**The look** is a terminal: one monospace face, thin box borders with names set into them, a title bar and a key bar. Every screen has the same layout: the title bar (part, codename, rank), a progress strip of every mission grouped by rank, the mission header with step pips, who's talking, and the one live box, YOUR TASK. A rank-up takes the whole body for a moment: the rank's badge in a gold frame. When every built mission is done, the campaign map shows the part as a tree, the badges, and the next part, locked. Part 2 teaches the command line.
+
 Each mission has four beats: the Mentor sets it up, Bolt or the Glitch causes trouble, the learner fixes it with the new skill, and a payoff leads into the next mission. Between missions, a short funny "intercepted transmission" unlocks, and a pixel-art map of HQ shows progress. Everything is drawn as pixel art.
 
 Ideas get memorable pictures: hold keys are **force fields**, Super is **the master key**, the focused window is **in the spotlight**, workspaces are **secret rooms**, and Esc is **the abort button**.
@@ -51,7 +53,7 @@ Graduation earns the White Hat rank and a printable certificate with the learner
 - **5th-grade reading level:** sentences under 15 words, everyday words, one instruction at a time, at most two sentences per speech bubble, large text.
 - **Works silently.** Nothing has to be said aloud. Sound effects are optional with an off switch, and every sound has a caption.
 - **An on-screen keyboard** lights up keys as they are held and tapped, labelled like the learner's keys (Super is printed "Win" on many keyboards).
-- **Progress is saved** to `$XDG_STATE_HOME/io.github.namlet.hacker-academy.json` (outside the plugin folder, which the shell watches for code changes), so it survives logging out. A settings screen lets a grown-up skip a mission or reset progress.
+- **Progress is saved** to `$XDG_STATE_HOME/io.github.namlet.hacker-academy.json` (outside the plugin folder, which the shell watches for code changes), so it survives logging out. A settings screen lets a grown-up skip a mission, reset progress (the settings stay), or set the character colors: classic 8-bit, or matching the theme.
 - **Opened from a top-bar button,** so learners never need a command.
 - **Plays on a workspace of its own.** When the Academy opens on a workspace holding anyone else's windows, it moves to an empty one, so a learner practising Win + W can't close a grown-up's work. Closing steps only count windows the learner opened.
 - Disruptive missions (closing all windows, logging out) are meant for the learner's own account; the Academy warns first. Omarchy's Ctrl + Alt + Delete closes every app window but not the Academy, which is part of the shell like the top bar, so the mission can watch the windows close.
@@ -79,7 +81,8 @@ Quickshell's modules are compiled into the `quickshell` binary, and the shell's 
 - **UI and keyboard behaviour** in QML that doesn't import Quickshell or `qs.*` lives in `components/`, takes theme values as properties, is tested headless with `qmltestrunner` (simulated key holds and taps work), and is linted strictly with `qmllint`.
 - **Quickshell wiring** (`Panel.qml`) stays thin with no logic, and is checked by hand on a real Omarchy desktop: it can't be linted or tested outside the shell.
 
-- **Pixel art** is text in `Sprites.js` (one character per pixel, named by role so it takes the theme's colors), checked for shape by tests and by eye with `make preview`, which shows every sprite on a dark and a light theme.
+- **Pixel art** is text in `Sprites.js` (one character per pixel, each sprite with its own 8-bit colors and the letters that follow the theme instead), checked for shape by tests and by eye with `make preview`, which shows every sprite on a dark and a light theme, in both color settings.
+- **Colors** come from `Theme.js`: the theme's `colors.toml` (green, yellow, darker backgrounds), falling back to the five colors Omarchy's shell knows. Tested in Node.
 
 Rule: anything testable must not import Quickshell or `qs.*`. `make test` runs everything; CI runs it on every pull request in an Arch Linux container.
 

@@ -20,7 +20,7 @@ Click the robot button in the top bar. Or from a terminal:
 omarchy-shell shell toggle io.github.namlet.hacker-academy
 ```
 
-Press Esc, or click "close", to dismiss it. Progress is saved to `~/.local/state/io.github.namlet.hacker-academy.json` and picks up where the learner left off. **Settings** in the panel lets a grown-up skip a mission or reset progress.
+Press Esc, or click "close", to dismiss it. Progress is saved to `~/.local/state/io.github.namlet.hacker-academy.json` and picks up where the learner left off. **Settings** in the panel lets a grown-up skip a mission, reset progress, or switch the characters between their own 8-bit colors and the current Omarchy theme's.
 
 ## Update
 

@@ -66,7 +66,7 @@ Item {
       waitForCelebration()
       compare(view.session.step, 3)
       verify(findChild(view, "lines").text.indexOf("Welcome to the Academy, Zero.") !== -1)
-      verify(findChild(view, "badge").visible)
+      verify(findChild(view, "rankUp").visible)
       saved.clear()
       clickItem("button-finish")
       compare(saved.count, 0)
@@ -442,7 +442,7 @@ Item {
       windowCloses("b1")
       waitForCelebration()
 
-      verify(findChild(view, "badge").visible)
+      verify(findChild(view, "rankUp").visible)
       compare([view.implicitWidth, view.implicitHeight], [w, h])
       clickItem("button-finish")
       waitForCelebration()
@@ -480,6 +480,64 @@ Item {
       verify(findChild(view, "combo-Win").lit && findChild(view, "combo-Enter").lit)
       // The keyboard picture stays away: Omarchy's shortcuts never reach it.
       verify(!findChild(view, "keyboard").visible)
+    }
+
+    // ------------------------------------------------------------ progress and ranks
+
+    function test_the_strip_shows_missions_done_now_and_locked() {
+      startMissionOne()
+      compare(findChild(view, "mission-0").missionState, "done")
+      compare(findChild(view, "mission-1").missionState, "now")
+      compare(findChild(view, "mission-2").missionState, "locked")
+      compare(findChild(view, "mission-9").missionState, "locked")
+      compare(findChild(view, "stepPips").children.length - 1, view.mission.steps.length)
+    }
+
+    function test_the_rank_shows_once_earned() {
+      verify(!findChild(view, "rankChip").visible, "no rank before recruitment")
+      startMissionOne()
+      verify(findChild(view, "rankChip").visible)
+      compare(findChild(view, "rankChipText").text, "RECRUIT")
+    }
+
+    function test_recruitment_ends_on_the_recruit_badge() {
+      view.session = { mission: 0, step: 3, count: 0, hits: [], idleMs: 0, hint: 0, codename: "Zero", windows: [], celebrating: false, done: false }
+      wait(20)
+      verify(findChild(view, "rankUp").visible)
+      verify(!findChild(view, "portrait").visible, "the rank-up takes the whole body")
+      compare(findChild(view, "rankName").text, "RECRUIT")
+      compare(findChild(view, "rankBadge").sprite, "recruitBadge")
+      verify(findChild(view, "rankLine").text.indexOf("You are now a Recruit.") !== -1)
+    }
+
+    function test_the_agent_badge_fits_the_corner_window() {
+      startMissionThree(0)
+      const w = view.implicitWidth, h = view.implicitHeight
+      startMissionThree(5)
+      verify(findChild(view, "rankUp").visible)
+      compare(findChild(view, "rankName").text, "AGENT")
+      compare(findChild(view, "rankBadge").sprite, "agentBadge")
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+    }
+
+    function test_the_map_shows_the_campaign_when_every_mission_is_done() {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3], current: null }
+      view.begin()
+      wait(20)
+      verify(findChild(view, "campaignMap").visible)
+      verify(findChild(view, "badge-Recruit").border.color === findChild(view, "badge-Agent").border.color, "both earned")
+      verify(findChild(view, "badge-Specialist").border.color !== findChild(view, "badge-Agent").border.color, "not yet earned")
+    }
+
+    function test_character_colors_can_follow_the_theme() {
+      compare(findChild(view, "portraitSprite").mode, "classic")
+      clickItem("settingsButton")
+      clickItem("settings-colors")
+      compare(saved.signalArguments[0][0].settings.characterColors, "theme")
+      compare(findChild(view, "portraitSprite").mode, "theme")
+      clickItem("settings-reset")
+      clickItem("settings-reset")
+      compare(view.progress.settings.characterColors, "theme", "a reset keeps the setting")
     }
 
     function test_settings_skip_and_reset() {

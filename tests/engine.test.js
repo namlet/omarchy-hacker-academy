@@ -37,7 +37,69 @@ test("missing, broken, or foreign progress starts fresh", () => {
 
 test("progress drops invalid entries instead of failing", () => {
   const p = Engine.parseProgress('{"version": 1, "codename": "<script>", "completed": [0, -1, "x", 2]}')
-  assert.deepEqual(p, { version: 1, codename: "", completed: [0, 2], current: null })
+  assert.deepEqual(p, { version: 1, codename: "", completed: [0, 2], current: null, settings: { characterColors: "classic" } })
+})
+
+test("settings survive saving, finishing missions, and a reset", () => {
+  let p = Engine.withSettings(Engine.newProgress(), { characterColors: "theme" })
+  p = Engine.parseProgress(Engine.serializeProgress(p))
+  p = Engine.completeMission(p, 0, "Zero")
+  p = Engine.rememberStep(p, Engine.startMission(1))
+  assert.equal(p.settings.characterColors, "theme")
+  p = Engine.resetProgress(p)
+  assert.deepEqual([p.completed, p.codename, p.settings.characterColors], [[], "", "theme"])
+})
+
+test("progress saved before settings existed gets the defaults", () => {
+  const p = Engine.parseProgress('{"version": 1, "codename": "Zero", "completed": [0], "current": null}')
+  assert.deepEqual(p.settings, { characterColors: "classic" })
+  assert.equal(Engine.withSettings(p, { characterColors: "neon" }).settings.characterColors, "classic")
+})
+
+// ---------------------------------------------------------------- campaign
+
+const { CAMPAIGN } = require("../Missions.js")
+
+test("ranks are earned by finishing the first mission of their group", () => {
+  const done = (completed) => ({ completed })
+  assert.equal(Engine.rankIndex(CAMPAIGN, done([])), -1)
+  assert.equal(Engine.rankIndex(CAMPAIGN, done([0, 1, 2])), 0)
+  assert.equal(Engine.rankIndex(CAMPAIGN, done([0, 1, 2, 3])), 1)
+})
+
+test("the campaign shows each mission as done, being played, or locked", () => {
+  const view = Engine.campaignView(CAMPAIGN, { completed: [0, 1] }, 2)
+  assert.deepEqual(view.map((r) => r.name), ["Recruit", "Agent", "Specialist", "White Hat"])
+  assert.deepEqual(view[0].missions.map((m) => m.state), ["done", "done", "now"])
+  assert.deepEqual(view[1].missions.map((m) => m.state), ["locked", "locked", "locked"])
+  assert.deepEqual(view.map((r) => r.earned), [true, false, false, false])
+  assert.equal(view[0].missions[1].title, "Pointer Control")
+  assert.equal(view.flatMap((r) => r.missions).length, CAMPAIGN.titles.length)
+})
+
+test("step states mark the celebrated step as done", () => {
+  assert.deepEqual(Engine.stepStates(4, 1, false), ["done", "now", "todo", "todo"])
+  assert.deepEqual(Engine.stepStates(4, 1, true), ["done", "done", "todo", "todo"])
+})
+
+test("mission numbers are two digits", () => {
+  assert.deepEqual([Engine.missionNumber(3), Engine.missionNumber(10)], ["03", "10"])
+})
+
+test("every mission built so far is in the campaign, under its own title", () => {
+  const { MISSIONS } = require("../Missions.js")
+  MISSIONS.forEach((m, i) => assert.equal(CAMPAIGN.titles[i], m.title))
+  const ranked = CAMPAIGN.ranks.flatMap((r) => r.missions)
+  assert.deepEqual(ranked, CAMPAIGN.titles.map((_, i) => i))
+})
+
+test("each rank's first mission ends on that rank's badge", () => {
+  const { MISSIONS } = require("../Missions.js")
+  for (const rank of CAMPAIGN.ranks) {
+    const mission = MISSIONS[rank.missions[0]]
+    if (!mission) continue
+    assert.equal(mission.steps[mission.steps.length - 1].badge, rank.name)
+  }
 })
 
 test("the next mission is the first one not completed", () => {

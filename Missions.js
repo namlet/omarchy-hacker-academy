@@ -308,17 +308,44 @@ var MISSIONS = [
   }
 ]
 
+// The whole tutorial: Part 1 is ten missions (MISSIONS holds the ones built so far),
+// and the learner rises through four ranks. A rank is earned by finishing the first
+// mission of its group, whose last step shows the rank's badge.
+var CAMPAIGN = {
+  part: "Part 1: The Desktop",
+  nextPart: "Part 2: The Command Line",
+  titles: ["Recruitment", "Pointer Control", "Force Fields", "The Master Key", "The Spotlight",
+    "Rearranging HQ", "Secret Rooms", "The Toolkit", "Lockdown", "Rescue Protocol"],
+  ranks: [
+    { name: "Recruit", missions: [0, 1, 2] },
+    { name: "Agent", missions: [3, 4, 5] },
+    { name: "Specialist", missions: [6, 7, 8] },
+    { name: "White Hat", missions: [9] }
+  ]
+}
+
 // Learner-facing strings outside the missions, also checked for reading level.
 var UI = {
   comingSoon: "Your next mission is coming soon. Great work so far!",
+  yourTask: "Your task",
+  transmission: "Transmission",
+  rankUp: "Rank up",
+  unlocked: "Unlocked",
+  accessLevel: "Access level {level}",
+  badgeAdded: "{rank} badge added to your file",
+  badges: "Badges",
+  locked: "Locked",
+  nextPartLocked: "Real hackers type their orders. Become a White Hat to open it.",
+  progressSaved: "Progress saved",
+  classicColors: "Character colors: classic",
+  themeColors: "Character colors: match theme",
   orEnter: "Tap Enter or click the button.",
   keepScrolling: "Keep scrolling down.",
   keepHolding: "Keep holding Shift!",
   codenamePrompt: "Your hacker name",
-  close: "Tap Esc or click here to close.",
   settings: "Settings"
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { MISSIONS: MISSIONS, UI: UI }
+  module.exports = { MISSIONS: MISSIONS, CAMPAIGN: CAMPAIGN, UI: UI }
 }
