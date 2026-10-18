@@ -26,6 +26,7 @@ Item {
   function open(payloadJson) {
     root.opened = true
     view.begin()
+    view.arrive()
     // Play on a workspace of its own, away from anyone else's windows.
     const ws = Hyprland.focusedWorkspace
     if (ws && view.needsOwnWorkspace(ws.toplevels.values.map(function(t) { return t.address })))
@@ -126,6 +127,23 @@ Item {
     }
   }
 
+  // Locking sends no event: while a step needs it, ask the lock screen once a second.
+  Timer {
+    interval: 1000
+    repeat: true
+    running: root.opened && view.watchesLock
+    onTriggered: if (!lockQuery.running) lockQuery.running = true
+  }
+
+  Process {
+    id: lockQuery
+    command: ["omarchy-shell", "lock", "isLocked"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: view.lockState(text.trim() === "true")
+    }
+  }
+
   PanelWindow {
     visible: root.opened
     // Centered for missions inside the panel; a corner when the real desktop is the stage.
@@ -154,6 +172,7 @@ Item {
       fontFamily: Style.font.family
       fontSize: Math.round(Style.font.body * 1.3)
       hintClock: root.opened
+      loginSession: Quickshell.env("XDG_SESSION_ID") || ""
       onProgressSaved: (progress) => progressFile.setText(Engine.serializeProgress(progress))
       onExitRequested: root.dismiss()
     }

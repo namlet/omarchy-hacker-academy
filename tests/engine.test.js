@@ -341,10 +341,10 @@ test("every step has a speaker, 1-2 lines, a known expectation, and full help", 
     for (const step of mission.steps) {
       assert.ok(["mentor", "bolt", "glitch"].includes(step.speaker))
       assert.ok(step.lines.length >= 1 && step.lines.length <= 2)
-      assert.ok(["button", "key", "codename", "pointer", "anykey", "hold", "capital", "tap", "window", "focus", "fullscreen", "swap", "float", "move", "resize", "workspace", "carry", "menu"].includes(step.expect.type))
+      assert.ok(["button", "key", "codename", "pointer", "anykey", "hold", "capital", "tap", "window", "focus", "fullscreen", "swap", "float", "move", "resize", "workspace", "carry", "menu", "lock", "login"].includes(step.expect.type))
       assert.ok(step.hint.bolt && step.hint.demo && Array.isArray(step.hint.keys))
       assert.ok(["mentor", "bolt", "glitch"].includes(step.success.speaker) && step.success.line)
-      if (["window", "focus", "fullscreen", "swap", "float", "move", "resize", "workspace", "carry", "menu"].includes(step.expect.type)) assert.ok(step.combo && step.combo.length >= 1, "a desktop step shows its keys")
+      if (["window", "focus", "fullscreen", "swap", "float", "move", "resize", "workspace", "carry", "menu", "lock", "login"].includes(step.expect.type)) assert.ok(step.combo && step.combo.length >= 1, "a desktop step shows its keys")
     }
   }
 })
@@ -512,4 +512,39 @@ test("menus open and close, and any app the learner opens can be closed", () => 
   assert.equal(s.step, 3)
   s = play(m, [{ action: "close", address: "calc" }], s)
   assert.ok(s.done)
+})
+
+// ---------------------------------------------------------------- lockdown
+
+test("locking and unlocking count by the screen's state", () => {
+  const m = [{ steps: [{ expect: { type: "lock", on: true } }, { expect: { type: "lock", on: false } }] }]
+  let s = Engine.startMission(0)
+  s = Engine.handle(m, s, { type: "lock", on: false })
+  assert.equal(s.celebrating, false, "an unlocked screen doesn't finish the lock step")
+  s = Engine.handle(m, s, { type: "lock", on: true })
+  s = Engine.finishCelebration(m, s)
+  s = Engine.handle(m, s, { type: "lock", on: true })
+  assert.equal(s.celebrating, false, "still locked")
+  s = Engine.handle(m, s, { type: "lock", on: false })
+  assert.ok(Engine.finishCelebration(m, s).done)
+})
+
+test("a log-out step is done when the Academy opens in another login", () => {
+  const button = { expect: { type: "button", id: "go" } }
+  const m = [{ steps: [button, { expect: { type: "login" } }, button] }]
+  let p = Engine.rememberStep(Engine.newProgress(), { mission: 0, step: 1, codename: "Zero" }, "47")
+  p = Engine.parseProgress(Engine.serializeProgress(p))
+  assert.equal(p.current.login, "47")
+  let s = Engine.resume(m, p)
+  assert.equal(Engine.handle(m, s, { type: "login", id: "47" }).celebrating, false, "the same login: not logged out yet")
+  s = Engine.handle(m, s, { type: "login", id: "52" })
+  assert.ok(s.celebrating)
+  assert.equal(Engine.finishCelebration(m, s).step, 2)
+})
+
+test("a log-out step never finishes without a remembered login", () => {
+  const m = [{ steps: [{ expect: { type: "login" } }] }]
+  const p = Engine.parseProgress('{"version": 1, "completed": [], "current": {"mission": 0, "step": 0, "codename": "", "login": "../x"}}')
+  assert.equal(p.current.login, "")
+  assert.equal(Engine.handle(m, Engine.resume(m, p), { type: "login", id: "52" }).celebrating, false)
 })

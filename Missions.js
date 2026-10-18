@@ -728,6 +728,95 @@ var MISSIONS = [
         }
       }
     ]
+  },
+  {
+    id: "lockdown",
+    title: "Lockdown",
+    stage: "corner",
+    steps: [
+      {
+        speaker: "mentor",
+        lines: ["A hacker never walks away from an open screen.", "Lock it, and nobody can sneak in."],
+        expect: { type: "button", id: "ready", label: "Show me", key: "Enter" },
+        success: { speaker: "glitch", line: "Sneak in? Who, me?" },
+        hint: {
+          bolt: "Click the button to start!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Win, Ctrl, and L locks the screen.", "Your password opens it again."],
+        combo: ["Win", "Ctrl", "L"],
+        expect: { type: "lock", on: true, label: "Lock the screen." },
+        success: { speaker: "glitch", line: "Hey! I can't get in!" },
+        hint: {
+          bolt: "Hold Win and Ctrl. Then tap L.",
+          keys: ["Win", "Ctrl", "L"],
+          demo: "Hold Win and Ctrl with two fingers. Tap L with another."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["Type your password and tap Enter."],
+        combo: ["Enter"],
+        expect: { type: "lock", on: false, label: "Unlock the screen." },
+        success: { speaker: "bolt", line: "You're back! The Glitch is still outside." },
+        hint: {
+          bolt: "Type your password. Then tap Enter.",
+          keys: ["Enter"],
+          demo: "Type your password on the lock screen. Then tap Enter."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Win and Esc opens the System menu.", "Look, but don't click anything."],
+        combo: ["Win", "Esc"],
+        expect: { type: "menu", open: true, label: "Open the System menu." },
+        success: { speaker: "bolt", line: "Lock, log out, and turn off. All in one place!" },
+        hint: {
+          bolt: "Hold Win, then tap Esc.",
+          keys: ["Win", "Esc"],
+          demo: "Esc is the top left key. Hold Win and tap it."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Esc closes it again."],
+        combo: ["Esc"],
+        expect: { type: "menu", open: false, label: "Close the menu." },
+        success: { speaker: "mentor", line: "Now for the big one." },
+        hint: {
+          bolt: "Esc is the top left key.",
+          keys: ["Esc"],
+          demo: "Tap Esc once."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Logging out closes all your windows, but your mission waits.", "Log out, then log back in."],
+        combo: ["Win", "Esc"],
+        expect: { type: "login", label: "Pick Logout. Then log back in." },
+        success: { speaker: "bolt", line: "You came back! And your mission waited." },
+        hint: {
+          bolt: "Open the System menu. Type logout and tap Enter.",
+          keys: ["Win", "Esc"],
+          demo: "Log in with your password. Then click the Academy on the bar."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Your screen is safe with you, {codename}.", "One mission left: Rescue Protocol."],
+        expect: { type: "button", id: "finish", label: "Finish mission", key: "Enter" },
+        success: { speaker: "bolt", line: "Lockdown complete! Beep boop!" },
+        hint: {
+          bolt: "Click the button. You know how!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      }
+    ]
   }
 ]
 
