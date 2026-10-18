@@ -64,6 +64,10 @@ FocusScope {
   // The keyboard picture only shows when keys are the task, or a hint lights one.
   readonly property bool keyboardShown: root.step !== null && !root.showingSettings
     && (root.keyTask || (root.session.hint >= 2 && root.step.hint.keys.length > 0))
+  // Tasks done several times (bugs to catch, letters to tap) show a meter.
+  readonly property bool counted: (root.expectType === "pointer" && root.step.expect.ids.length > 1) || root.expectType === "anykey"
+  readonly property int countDone: root.expectType === "pointer" ? root.session.hits.length : root.expectType === "anykey" ? root.session.count : 0
+  readonly property int countGoal: root.expectType === "pointer" ? root.step.expect.ids.length : root.expectType === "anykey" ? root.step.expect.times : 0
   readonly property string characterColors: Engine.settingsOf(root.progress).characterColors
 
   // Ranks and missions, for the progress strip, title bar, and map.
@@ -646,38 +650,77 @@ FocusScope {
               Column {
                 visible: root.expectType !== "button" && root.step !== null && root.step.expect.label !== undefined
                 anchors.centerIn: parent
+                width: parent.width
                 spacing: root.f / 3
 
-                Row {
-                  anchors.horizontalCenter: parent.horizontalCenter
-                  spacing: root.f * 0.6
+                // The order, like a command at a prompt, with a meter for tasks done several times.
+                Item {
+                  width: parent.width
+                  height: instruction.implicitHeight
 
-                  Text {
-                    text: ">"
-                    color: root.theme.done
-                    font.family: root.fontFamily
-                    font.pixelSize: root.f * 1.1
-                    font.bold: true
+                  Row {
+                    spacing: root.f * 0.6
+
+                    Text {
+                      text: ">"
+                      color: root.theme.done
+                      font.family: root.fontFamily
+                      font.pixelSize: root.f * 1.1
+                      font.bold: true
+                    }
+
+                    Text {
+                      id: instruction
+                      objectName: "instruction"
+                      text: root.step && root.step.expect.label ? root.step.expect.label : ""
+                      color: root.theme.text
+                      font.family: root.fontFamily
+                      font.pixelSize: root.f * 1.1
+                      font.bold: true
+                    }
                   }
 
-                  Text {
-                    objectName: "instruction"
-                    text: root.step && root.step.expect.label ? root.step.expect.label : ""
-                    color: root.theme.text
-                    font.family: root.fontFamily
-                    font.pixelSize: root.f * 1.1
-                    font.bold: true
-                  }
-
-                  Text {
-                    objectName: "tally"
-                    visible: (root.expectType === "pointer" && root.step.expect.ids.length > 1) || root.expectType === "anykey"
-                    text: root.expectType === "pointer" ? root.session.hits.length + " of " + root.step.expect.ids.length
-                      : root.expectType === "anykey" ? root.session.count + " of " + root.step.expect.times : ""
-                    color: root.theme.quiet
-                    font.family: root.fontFamily
-                    font.pixelSize: root.f
+                  Row {
+                    objectName: "meter"
+                    visible: root.counted
+                    anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
+                    spacing: root.f * 0.5
+
+                    Text {
+                      anchors.verticalCenter: parent.verticalCenter
+                      text: (root.expectType === "pointer" ? Missions.UI.caught : Missions.UI.tapped).toUpperCase()
+                      color: root.theme.quiet
+                      font.family: root.fontFamily
+                      font.pixelSize: root.f * 0.72
+                      font.letterSpacing: root.f * 0.12
+                    }
+
+                    Row {
+                      anchors.verticalCenter: parent.verticalCenter
+                      spacing: root.f * 0.18
+
+                      Repeater {
+                        model: root.counted ? root.countGoal : 0
+
+                        Rectangle {
+                          required property int index
+                          width: root.f * 0.62
+                          height: root.f * 0.9
+                          color: index < root.countDone ? root.theme.done : root.theme.line
+                        }
+                      }
+                    }
+
+                    Text {
+                      objectName: "tally"
+                      anchors.verticalCenter: parent.verticalCenter
+                      text: root.countDone + "/" + root.countGoal
+                      color: root.theme.text
+                      font.family: root.fontFamily
+                      font.pixelSize: root.f * 0.85
+                      font.bold: true
+                    }
                   }
                 }
 
