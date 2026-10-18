@@ -120,20 +120,35 @@ function missionNumber(n) {
   return (n < 10 ? "0" : "") + n
 }
 
+// The learner's windows a step works on: step.needs ({app, count}), or for a closing
+// step, the windows it closes. null when the step needs none.
+function windowsNeeded(step) {
+  if (step.needs) return step.needs
+  if (step.expect.type === "window" && step.expect.action === "close") return { app: step.expect.app, count: step.expect.times || 1 }
+  return null
+}
+
 // The session to start with: the remembered step if it belongs to the next mission, else its start.
 // previous (optional) is the session before, whose windows still count when it was the same
-// mission. A step that closes a window needs one the learner opened; without one (say,
-// after logging out) it resumes a step earlier, where that window gets opened.
+// mission. A step that needs the learner's windows, when they're gone (say, after logging
+// out), resumes at the step before it that opens them.
 function resume(missions, progress, previous) {
   var index = nextMission(missions, progress)
   var session = startMission(index)
-  if (previous && previous.mission === index && previous.windows) session.windows = previous.windows
+  if (previous && previous.mission === index && previous.windows) {
+    session.windows = previous.windows
+    session.focused = previous.focused || ""
+  }
   var c = progress.current
   if (c && c.mission === index && index < missions.length && c.step < missions[index].steps.length) {
-    var expect = missions[index].steps[c.step].expect
-    var closeWithout = expect.type === "window" && expect.action === "close"
-      && !session.windows.some(function(w) { return w.app === expect.app })
-    session.step = closeWithout && c.step > 0 ? c.step - 1 : c.step
+    var steps = missions[index].steps
+    var step = c.step
+    var needs = windowsNeeded(steps[step])
+    var have = needs ? session.windows.filter(function(w) { return w.app === needs.app }).length : 0
+    if (needs && have < needs.count) {
+      while (step > 0 && !(steps[step].expect.type === "window" && steps[step].expect.action === "open")) step--
+    }
+    session.step = step
     session.codename = c.codename
   }
   return session
@@ -148,7 +163,7 @@ function isValidCodename(name) {
 
 // windows: the learner's own windows, opened during this mission ({address, app}).
 function startMission(index) {
-  return { mission: index, step: 0, count: 0, hits: [], typed: "", idleMs: 0, hint: 0, codename: "", windows: [], celebrating: false, done: false }
+  return { mission: index, step: 0, count: 0, hits: [], typed: "", idleMs: 0, hint: 0, codename: "", windows: [], focused: "", celebrating: false, done: false }
 }
 
 function currentStep(missions, session) {
@@ -164,6 +179,7 @@ function advance(missions, session) {
     count: 0, hits: [], typed: "", idleMs: 0, hint: 0,
     codename: session.codename,
     windows: session.windows,
+    focused: session.focused,
     celebrating: false,
     done: last
   }
@@ -191,7 +207,9 @@ function finishCelebration(missions, session) {
 // Only progress resets the help timer, so mashing other keys still brings hints.
 function handle(missions, session, event) {
   var closedOwn = event.type === "window" && event.action === "close" ? ownWindow(session, event.address) : null
-  if (event.type === "window") session = trackWindow(session, event)
+  var focusedBefore = session.focused
+  if (event.type === "window" && (event.action === "open" || event.action === "close")) session = trackWindow(session, event)
+  if (event.type === "window" && event.action === "focus") session = withChanges(session, { focused: event.address })
   var step = currentStep(missions, session)
   if (!step || session.done || session.celebrating) return session
   var expect = step.expect
@@ -221,11 +239,23 @@ function handle(missions, session, event) {
   if (expect.type === "tap" && event.type === "tap" && event.key === expect.key)
     return celebrate(session, {})
   // Opening counts for the right kind of app; closing only for a window the learner
-  // opened, so closing someone else's work never counts.
+  // opened, so closing someone else's work never counts. expect.times asks for several.
   if (expect.type === "window" && event.type === "window" && event.action === expect.action) {
-    if (event.action === "open" && event.app === expect.app) return celebrate(session, {})
-    if (event.action === "close" && closedOwn && closedOwn.app === expect.app) return celebrate(session, {})
+    var counts = event.action === "open" ? event.app === expect.app : closedOwn !== null && closedOwn.app === expect.app
+    if (!counts) return session
+    var windowCount = session.count + 1
+    if (windowCount >= (expect.times || 1)) return celebrate(session, { count: windowCount })
+    return withChanges(session, { count: windowCount, idleMs: 0, hint: 0 })
   }
+  // The spotlight (keyboard focus) moving to another of the learner's windows. Hyprland
+  // repeats the focus event when a title changes, so it has to be a different window.
+  if (expect.type === "focus" && event.type === "window" && event.action === "focus"
+      && event.address !== focusedBefore && ownWindow(session, event.address))
+    return celebrate(session, {})
+  // Full screen on (or off) for the learner's window in the spotlight.
+  if (expect.type === "fullscreen" && event.type === "window" && event.action === "fullscreen"
+      && event.on === expect.on && ownWindow(session, session.focused))
+    return celebrate(session, {})
   return session
 }
 

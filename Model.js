@@ -128,7 +128,8 @@ function windowAddress(address) {
   return String(address).replace(/^0x/, "")
 }
 
-// A window opening or closing, from Hyprland's raw events; null for anything else.
+// A window opening, closing, taking the keyboard, or going full screen, from
+// Hyprland's raw events; null for anything else.
 // openwindow data is "address,workspace,class,title" (the title may contain commas);
 // closewindow data is "address".
 function windowEvent(event) {
@@ -139,6 +140,12 @@ function windowEvent(event) {
     return { action: "open", address: windowAddress(parts[0]), app: appKind(parts[2]) }
   if (name === "closewindow" && parts[0] !== "")
     return { action: "close", address: windowAddress(parts[0]), app: "" }
+  // The window that hears the keyboard; empty when none does.
+  if (name === "activewindowv2")
+    return { action: "focus", address: windowAddress(parts[0]), app: "" }
+  // The window in the spotlight went full screen ("1") or back ("0").
+  if (name === "fullscreen")
+    return { action: "fullscreen", on: parts[0] === "1", address: "", app: "" }
   return null
 }
 

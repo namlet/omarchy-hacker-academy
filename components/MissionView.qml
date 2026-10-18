@@ -48,12 +48,12 @@ FocusScope {
   readonly property var mission: root.finishedAll ? null : root.missions[root.session.mission]
   readonly property var step: root.finishedAll ? null : Engine.currentStep(root.missions, root.session)
   readonly property string stage: root.mission ? root.mission.stage : "center"
-  readonly property bool holdKeyboard: root.mission ? root.mission.holdKeyboard : true
-  // How the window takes the keyboard: held for keyboard missions; never while the
-  // learner opens or closes a real window, so the pointer resting on this window
-  // can't pull focus away from the window that Win+W should close.
-  readonly property string keyboardFocus: root.holdKeyboard ? "exclusive"
-    : root.expectType === "window" ? "none" : "onDemand"
+  // How the window takes the keyboard: held, so Enter and the keys of keyboard tasks
+  // always reach it; but never during a step done in the learner's own windows, so
+  // the pointer resting on this window can't pull focus away from them.
+  readonly property string keyboardFocus: root.desktopTask ? "none" : "exclusive"
+  // Steps done on the real desktop with Omarchy's shortcuts.
+  readonly property bool desktopTask: ["window", "focus", "fullscreen"].indexOf(root.expectType) !== -1
   // Desktop missions sit small in a corner, out of the way of the real windows.
   readonly property bool onDesktop: root.stage === "corner"
   readonly property string codename: root.session.codename || root.progress.codename
@@ -65,9 +65,19 @@ FocusScope {
   readonly property bool keyboardShown: root.step !== null && !root.showingSettings
     && (root.keyTask || (root.session.hint >= 2 && root.step.hint.keys.length > 0))
   // Tasks done several times (bugs to catch, letters to tap) show a meter.
-  readonly property bool counted: (root.expectType === "pointer" && root.step.expect.ids.length > 1) || root.expectType === "anykey"
-  readonly property int countDone: root.expectType === "pointer" ? root.session.hits.length : root.expectType === "anykey" ? root.session.count : 0
-  readonly property int countGoal: root.expectType === "pointer" ? root.step.expect.ids.length : root.expectType === "anykey" ? root.step.expect.times : 0
+  readonly property bool counted: root.countGoal > 1
+  readonly property int countDone: root.expectType === "pointer" ? root.session.hits.length : root.session.count
+  readonly property int countGoal: root.expectType === "pointer" ? root.step.expect.ids.length
+    : root.expectType === "anykey" || root.expectType === "window" ? (root.step.expect.times || 1) : 0
+  readonly property string countLabel: root.expectType === "pointer" ? Missions.UI.caught
+    : root.expectType === "anykey" ? Missions.UI.tapped
+    : root.step && root.step.expect.action === "close" ? Missions.UI.closed : Missions.UI.opened
+  // Who's talking: their name, picture, and the color of their name.
+  readonly property var speakers: ({
+    mentor: { name: "The Mentor", sprite: "mentor", color: root.theme.text },
+    bolt: { name: "Bolt", sprite: "bolt", color: root.theme.cyan },
+    glitch: { name: "The Glitch", sprite: "glitch", color: root.theme.magenta }
+  })
   readonly property string characterColors: Engine.settingsOf(root.progress).characterColors
 
   // Ranks and missions, for the progress strip, title bar, and map.
@@ -97,10 +107,11 @@ FocusScope {
     root.focusTask()
   }
 
-  // A raw Hyprland event ({name, data}); windows opening and closing can finish a step.
+  // A raw Hyprland event ({name, data}); windows opening, closing, taking the keyboard,
+  // or going full screen can finish a step.
   function windowEvent(event) {
     const w = Model.windowEvent(event)
-    if (w) root.handle({ type: "window", action: w.action, address: w.address, app: w.app })
+    if (w) root.handle({ type: "window", action: w.action, address: w.address, app: w.app, on: w.on })
   }
 
   // Given the addresses of the windows on the current workspace: should the Academy
@@ -517,8 +528,8 @@ FocusScope {
             objectName: "portrait"
             width: root.f * (root.onDesktop ? 4.8 : 8.2)
             height: parent.height
-            label: root.onDesktop ? "" : (root.speaker === "bolt" ? "Bolt" : "The Mentor")
-            labelColor: root.speaker === "bolt" ? root.theme.cyan : root.theme.text
+            label: root.onDesktop ? "" : root.speakers[root.speaker].name
+            labelColor: root.speakers[root.speaker].color
             lineColor: root.theme.line
             ground: root.theme.ground
             boldLabel: true
@@ -530,7 +541,7 @@ FocusScope {
               anchors.centerIn: parent
               width: Math.min(parent.width, parent.height) * (root.onDesktop ? 1.35 : 1.15)
               height: width
-              sprite: root.speaker === "bolt" ? "bolt" : "mentor"
+              sprite: root.speakers[root.speaker].sprite
               theme: root.theme
               mode: root.characterColors
             }
@@ -689,7 +700,7 @@ FocusScope {
 
                     Text {
                       anchors.verticalCenter: parent.verticalCenter
-                      text: (root.expectType === "pointer" ? Missions.UI.caught : Missions.UI.tapped).toUpperCase()
+                      text: root.countLabel.toUpperCase()
                       color: root.theme.quiet
                       font.family: root.fontFamily
                       font.pixelSize: root.f * 0.72
@@ -1022,7 +1033,7 @@ FocusScope {
           rankNames: Missions.CAMPAIGN.ranks.map(function(r) { return r.name })
           line: root.step ? (root.celebrating ? Engine.render(root.step.success.line, root.codename) : Engine.render(root.step.lines.join(" "), root.codename)) : ""
           unlocks: [Missions.UI.accessLevel.replace("{level}", rankUpView.level), Missions.UI.badgeAdded.replace("{rank}", rankUpView.rank)]
-          buttonId: root.step ? root.step.expect.id : ""
+          buttonId: root.step && root.step.expect.id ? root.step.expect.id : ""
           buttonLabel: root.step && root.step.expect.label ? root.step.expect.label : ""
           celebrating: root.celebrating
           compact: root.onDesktop

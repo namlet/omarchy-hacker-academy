@@ -15,7 +15,6 @@ var MISSIONS = [
     id: "recruitment",
     title: "Recruitment",
     stage: "center",
-    holdKeyboard: true,
     steps: [
       {
         speaker: "mentor",
@@ -69,7 +68,6 @@ var MISSIONS = [
     id: "pointer",
     title: "Pointer Control",
     stage: "center",
-    holdKeyboard: true,
     steps: [
       {
         speaker: "mentor",
@@ -148,7 +146,6 @@ var MISSIONS = [
     id: "force-fields",
     title: "Force Fields",
     stage: "center",
-    holdKeyboard: true,
     steps: [
       {
         speaker: "mentor",
@@ -231,7 +228,6 @@ var MISSIONS = [
     id: "master-key",
     title: "The Master Key",
     stage: "corner",
-    holdKeyboard: false,
     steps: [
       {
         speaker: "mentor",
@@ -305,6 +301,111 @@ var MISSIONS = [
         }
       }
     ]
+  },
+  {
+    id: "spotlight",
+    title: "The Spotlight",
+    stage: "corner",
+    steps: [
+      {
+        speaker: "mentor",
+        lines: ["Only one window can hear the keyboard.", "Its bright border is called the spotlight."],
+        expect: { type: "button", id: "ready", label: "Show me", key: "Enter" },
+        success: { speaker: "glitch", line: "Hee hee! Something sneaky is coming." },
+        hint: {
+          bolt: "Click the button to start!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      },
+      {
+        speaker: "glitch",
+        lines: ["I'm the Glitch, and I hide in windows.", "Open two terminals and try to find me!"],
+        combo: ["Win", "Enter"],
+        expect: { type: "window", action: "open", app: "terminal", times: 2, label: "Open two terminals." },
+        success: { speaker: "mentor", line: "Two windows. Only one has the bright border." },
+        hint: {
+          bolt: "Win and Enter, then Win and Enter again.",
+          keys: ["Win", "Enter"],
+          demo: "Hold Win and tap Enter. Let go, then do it one more time."
+        }
+      },
+      {
+        speaker: "glitch",
+        lines: ["I'm hiding in the other window!", "Win and an arrow key moves the spotlight."],
+        combo: ["Win", "←"],
+        needs: { app: "terminal", count: 2 },
+        expect: { type: "focus", label: "Move the spotlight to the other window." },
+        success: { speaker: "glitch", line: "Eek! You found me." },
+        hint: {
+          bolt: "Hold Win, then tap the left arrow.",
+          keys: ["Win"],
+          demo: "The arrow keys are at the bottom right. Hold Win and tap the left one."
+        }
+      },
+      {
+        speaker: "glitch",
+        lines: ["Now I'm back in the first one!", "Can you catch me again?"],
+        combo: ["Win", "→"],
+        needs: { app: "terminal", count: 2 },
+        expect: { type: "focus", label: "Move the spotlight back." },
+        success: { speaker: "bolt", line: "Ha! Caught you again, Glitch." },
+        hint: {
+          bolt: "This time, Win and the right arrow.",
+          keys: ["Win"],
+          demo: "Hold Win and tap the right arrow. Watch the bright border move."
+        }
+      },
+      {
+        speaker: "bolt",
+        lines: ["Let's make that window huge!", "Win and F fills the whole screen."],
+        combo: ["Win", "F"],
+        needs: { app: "terminal", count: 2 },
+        expect: { type: "fullscreen", on: true, label: "Make the window fill the screen." },
+        success: { speaker: "mentor", line: "One big window. No room to hide." },
+        hint: {
+          bolt: "Hold Win, then tap F.",
+          keys: ["Win", "F"],
+          demo: "F is in the middle row of letters. Hold Win and tap F."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Win and F again shrinks it back.", "The same keys undo it."],
+        combo: ["Win", "F"],
+        needs: { app: "terminal", count: 2 },
+        expect: { type: "fullscreen", on: false, label: "Shrink the window back." },
+        success: { speaker: "bolt", line: "Back to normal size!" },
+        hint: {
+          bolt: "Same keys again. Win and F!",
+          keys: ["Win", "F"],
+          demo: "Hold Win and tap F one more time."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Hackers clean up when they're done.", "Close both terminals."],
+        combo: ["Win", "W"],
+        expect: { type: "window", action: "close", app: "terminal", times: 2, label: "Close both terminals." },
+        success: { speaker: "glitch", line: "Fine! I'll find another place to hide." },
+        hint: {
+          bolt: "Win and W closes the window in the spotlight.",
+          keys: ["Win", "W"],
+          demo: "Hold Win and tap W. Then do it again for the other one."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["You can steer the spotlight now.", "The Glitch can't hide from you, {codename}."],
+        expect: { type: "button", id: "finish", label: "Finish mission", key: "Enter" },
+        success: { speaker: "bolt", line: "Spotlight master {codename}! Woohoo!" },
+        hint: {
+          bolt: "Click the button. You know how!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      }
+    ]
   }
 ]
 
@@ -339,6 +440,8 @@ var UI = {
   progressSaved: "Progress saved",
   caught: "Caught",
   tapped: "Tapped",
+  opened: "Opened",
+  closed: "Closed",
   orEnter: "Tap Enter or click the button.",
   keepScrolling: "Keep scrolling down.",
   keepHolding: "Keep holding Shift!",

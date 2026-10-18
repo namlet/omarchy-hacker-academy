@@ -184,7 +184,7 @@ Item {
       view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2], current: null }
       view.begin()
       compare([view.session.mission, view.session.step], [3, 0])
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4], current: null }
       view.begin()
       verify(view.finishedAll)
       verify(findChild(view, "comingSoon").visible)
@@ -404,11 +404,11 @@ Item {
     function windowOpens(address, appClass) { view.windowEvent({ name: "openwindow", data: address + ",1," + appClass + ",A window" }) }
     function windowCloses(address) { view.windowEvent({ name: "closewindow", data: address }) }
 
-    function test_mission_three_sits_small_in_a_corner_and_lets_go_of_the_keyboard() {
+    function test_mission_three_sits_small_in_a_corner() {
       startMissionTwo(0)
       const keyboardWidth = view.implicitWidth
       startMissionThree(0)
-      compare([view.stage, view.holdKeyboard], ["corner", false])
+      compare(view.stage, "corner")
       verify(!findChild(view, "keyboard").visible)
       verify(view.implicitWidth < keyboardWidth)
     }
@@ -417,13 +417,13 @@ Item {
       startMissionTwo(0)
       compare(view.keyboardFocus, "exclusive")
       startMissionThree(0)
-      compare(view.keyboardFocus, "onDemand")
+      compare(view.keyboardFocus, "exclusive", "Enter presses the button")
       for (const step of [1, 2, 3, 4]) {
         startMissionThree(step)
         compare(view.keyboardFocus, "none", "step " + step)
       }
       startMissionThree(5)
-      compare(view.keyboardFocus, "onDemand")
+      compare(view.keyboardFocus, "exclusive", "Enter finishes, even with no window left to give it focus")
     }
 
     function test_mission_three_end_to_end() {
@@ -486,6 +486,72 @@ Item {
       verify(view.celebrating)
     }
 
+    // ------------------------------------------------------------ mission 4
+
+    function startMissionFour(step) {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3], current: { mission: 4, step: step, codename: "Zero" } }
+      view.begin()
+      wait(20)
+    }
+
+    function focusOn(address) { view.windowEvent({ name: "activewindowv2", data: address }) }
+    function fullscreen(on) { view.windowEvent({ name: "fullscreen", data: on ? "1" : "0" }) }
+
+    function test_mission_four_end_to_end() {
+      startMissionFour(0)
+      const w = view.implicitWidth, h = view.implicitHeight
+      compare(view.stage, "corner")
+      clickItem("button-ready")
+      waitForCelebration()
+
+      verify(findChild(view, "meter").visible)
+      windowOpens("t1", "foot")
+      focusOn("t1")
+      compare(findChild(view, "tally").text, "1/2")
+      windowOpens("t2", "foot")
+      focusOn("t2")
+      waitForCelebration()
+
+      compare(view.keyboardFocus, "none", "the spotlight stays on the learner's windows")
+      focusOn("t2")
+      verify(!view.celebrating, "a title change isn't a move")
+      focusOn("t1")
+      waitForCelebration()
+      focusOn("t2")
+      waitForCelebration()
+
+      fullscreen(true)
+      waitForCelebration()
+      fullscreen(false)
+      waitForCelebration()
+
+      windowCloses("t2")
+      compare(findChild(view, "tally").text, "1/2")
+      windowCloses("t1")
+      waitForCelebration()
+
+      compare(view.session.step, 7)
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+      clickItem("button-finish")
+      waitForCelebration()
+      verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(4) !== -1)
+    }
+
+    function test_steps_without_a_button_give_the_rank_up_no_button_name() {
+      startMissionFour(2)
+      compare(findChild(view, "rankUp").buttonId, "")
+    }
+
+    function test_the_glitch_speaks_with_its_own_picture() {
+      startMissionFour(1)
+      compare(findChild(view, "portraitSprite").sprite, "glitch")
+    }
+
+    function test_mission_four_resumes_where_the_terminals_get_opened() {
+      startMissionFour(4)
+      compare(view.session.step, 1, "after logging out the terminals are gone")
+    }
+
     function test_mission_three_keys_light_up_when_help_grows() {
       startMissionThree(1)
       verify(!findChild(view, "combo-Win").lit)
@@ -534,7 +600,7 @@ Item {
     }
 
     function test_the_map_shows_the_campaign_when_every_mission_is_done() {
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4], current: null }
       view.begin()
       wait(20)
       verify(findChild(view, "campaignMap").visible)
@@ -573,7 +639,7 @@ Item {
     }
 
     function test_nothing_to_skip_once_every_mission_is_done() {
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4], current: null }
       view.begin()
       clickItem("settingsButton")
       verify(!findChild(view, "settings-skip").visible)
