@@ -57,7 +57,7 @@ FocusScope {
   // the pointer resting on this window can't pull focus away from them.
   readonly property string keyboardFocus: root.desktopTask ? "none" : "exclusive"
   // Steps done on the real desktop with Omarchy's shortcuts.
-  readonly property bool desktopTask: ["window", "focus", "fullscreen", "swap", "float", "move", "resize", "workspace", "carry"].indexOf(root.expectType) !== -1
+  readonly property bool desktopTask: ["window", "focus", "fullscreen", "swap", "float", "move", "resize", "workspace", "carry", "menu"].indexOf(root.expectType) !== -1
   // Which step is being played, as text that changes whenever the step does.
   readonly property string stepKey: root.session.mission + ":" + root.session.step
   // Steps whose action sends no event: the panel reports window positions meanwhile.

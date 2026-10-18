@@ -184,7 +184,7 @@ Item {
       view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2], current: null }
       view.begin()
       compare([view.session.mission, view.session.step], [3, 0])
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7], current: null }
       view.begin()
       verify(view.finishedAll)
       verify(findChild(view, "comingSoon").visible)
@@ -651,6 +651,43 @@ Item {
       compare(findChild(view, "instruction").text, "Go to room ?.")
     }
 
+    // ------------------------------------------------------------ mission 7
+
+    function startMissionSeven(step) {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6], current: { mission: 7, step: step, codename: "Zero" } }
+      view.begin()
+      wait(20)
+    }
+
+    function menu(open) { view.windowEvent({ name: open ? "openlayer" : "closelayer", data: "omarchy-menu" }) }
+
+    function test_mission_seven_end_to_end() {
+      startMissionSeven(0)
+      const w = view.implicitWidth, h = view.implicitHeight
+      clickItem("button-ready")
+      waitForCelebration()
+
+      compare(view.keyboardFocus, "none", "the menu gets the keys")
+      menu(true)
+      waitForCelebration()
+      verify(findChild(view, "combo-Esc").visible)
+      menu(false)
+      waitForCelebration()
+      windowOpens("calc", "omacalc")
+      waitForCelebration()
+      windowCloses("calc")
+      waitForCelebration()
+      menu(true)
+      waitForCelebration()
+      menu(false)
+      waitForCelebration()
+
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+      clickItem("button-finish")
+      waitForCelebration()
+      verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(7) !== -1)
+    }
+
     function test_mission_three_keys_light_up_when_help_grows() {
       startMissionThree(1)
       verify(!findChild(view, "combo-Win").lit)
@@ -699,7 +736,7 @@ Item {
     }
 
     function test_the_map_shows_the_campaign_when_every_mission_is_done() {
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7], current: null }
       view.begin()
       wait(20)
       verify(findChild(view, "campaignMap").visible)
@@ -738,7 +775,7 @@ Item {
     }
 
     function test_nothing_to_skip_once_every_mission_is_done() {
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7], current: null }
       view.begin()
       clickItem("settingsButton")
       verify(!findChild(view, "settings-skip").visible)
