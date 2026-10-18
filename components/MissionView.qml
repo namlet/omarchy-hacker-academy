@@ -48,12 +48,10 @@ FocusScope {
   readonly property var mission: root.finishedAll ? null : root.missions[root.session.mission]
   readonly property var step: root.finishedAll ? null : Engine.currentStep(root.missions, root.session)
   readonly property string stage: root.mission ? root.mission.stage : "center"
-  readonly property bool holdKeyboard: root.mission ? root.mission.holdKeyboard : true
-  // How the window takes the keyboard: held for keyboard missions; never while the
-  // learner opens or closes a real window, so the pointer resting on this window
-  // can't pull focus away from the window that Win+W should close.
-  readonly property string keyboardFocus: root.holdKeyboard ? "exclusive"
-    : root.desktopTask ? "none" : "onDemand"
+  // How the window takes the keyboard: held, so Enter and the keys of keyboard tasks
+  // always reach it; but never during a step done in the learner's own windows, so
+  // the pointer resting on this window can't pull focus away from them.
+  readonly property string keyboardFocus: root.desktopTask ? "none" : "exclusive"
   // Steps done on the real desktop with Omarchy's shortcuts.
   readonly property bool desktopTask: ["window", "focus", "fullscreen"].indexOf(root.expectType) !== -1
   // Desktop missions sit small in a corner, out of the way of the real windows.

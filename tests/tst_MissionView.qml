@@ -404,11 +404,11 @@ Item {
     function windowOpens(address, appClass) { view.windowEvent({ name: "openwindow", data: address + ",1," + appClass + ",A window" }) }
     function windowCloses(address) { view.windowEvent({ name: "closewindow", data: address }) }
 
-    function test_mission_three_sits_small_in_a_corner_and_lets_go_of_the_keyboard() {
+    function test_mission_three_sits_small_in_a_corner() {
       startMissionTwo(0)
       const keyboardWidth = view.implicitWidth
       startMissionThree(0)
-      compare([view.stage, view.holdKeyboard], ["corner", false])
+      compare(view.stage, "corner")
       verify(!findChild(view, "keyboard").visible)
       verify(view.implicitWidth < keyboardWidth)
     }
@@ -417,13 +417,13 @@ Item {
       startMissionTwo(0)
       compare(view.keyboardFocus, "exclusive")
       startMissionThree(0)
-      compare(view.keyboardFocus, "onDemand")
+      compare(view.keyboardFocus, "exclusive", "Enter presses the button")
       for (const step of [1, 2, 3, 4]) {
         startMissionThree(step)
         compare(view.keyboardFocus, "none", "step " + step)
       }
       startMissionThree(5)
-      compare(view.keyboardFocus, "onDemand")
+      compare(view.keyboardFocus, "exclusive", "Enter finishes, even with no window left to give it focus")
     }
 
     function test_mission_three_end_to_end() {

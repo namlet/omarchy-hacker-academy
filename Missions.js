@@ -15,7 +15,6 @@ var MISSIONS = [
     id: "recruitment",
     title: "Recruitment",
     stage: "center",
-    holdKeyboard: true,
     steps: [
       {
         speaker: "mentor",
@@ -69,7 +68,6 @@ var MISSIONS = [
     id: "pointer",
     title: "Pointer Control",
     stage: "center",
-    holdKeyboard: true,
     steps: [
       {
         speaker: "mentor",
@@ -148,7 +146,6 @@ var MISSIONS = [
     id: "force-fields",
     title: "Force Fields",
     stage: "center",
-    holdKeyboard: true,
     steps: [
       {
         speaker: "mentor",
@@ -231,7 +228,6 @@ var MISSIONS = [
     id: "master-key",
     title: "The Master Key",
     stage: "corner",
-    holdKeyboard: false,
     steps: [
       {
         speaker: "mentor",
@@ -310,7 +306,6 @@ var MISSIONS = [
     id: "spotlight",
     title: "The Spotlight",
     stage: "corner",
-    holdKeyboard: false,
     steps: [
       {
         speaker: "mentor",

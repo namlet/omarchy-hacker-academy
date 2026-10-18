@@ -103,10 +103,9 @@ Item {
     WlrLayershell.namespace: "hacker-academy"
     // Desktop missions sit above full-screen windows, so the next step stays in sight.
     WlrLayershell.layer: view.stage === "corner" ? WlrLayer.Overlay : WlrLayer.Top
-    // Keyboard missions hold the keyboard so a drifting pointer can't take it
-    // (Omarchy focuses whatever is under the mouse); desktop missions let go.
-    WlrLayershell.keyboardFocus: view.keyboardFocus === "exclusive" ? WlrKeyboardFocus.Exclusive
-      : view.keyboardFocus === "none" ? WlrKeyboardFocus.None : WlrKeyboardFocus.OnDemand
+    // The Academy holds the keyboard so a drifting pointer can't take it (Omarchy
+    // focuses whatever is under the mouse), and lets go for steps done in other windows.
+    WlrLayershell.keyboardFocus: view.keyboardFocus === "none" ? WlrKeyboardFocus.None : WlrKeyboardFocus.Exclusive
 
     MissionView {
       id: view
