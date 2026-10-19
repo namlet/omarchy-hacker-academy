@@ -4,7 +4,7 @@ An Omarchy shell plugin that teaches new users — starting with kids who have o
 
 The learner trains as a white-hat hacker recruit. Lessons ask them to do real things on the real desktop, and the Academy notices when they do. See [DESIGN.md](DESIGN.md) for the plan.
 
-> **Status: early.** Missions 0–3 (Recruitment, Pointer Control, Force Fields, The Master Key) are playable. Missions 4–9 are coming. From mission 3 on, the Academy waits in a corner while the learner uses the real desktop: it opens and closes a terminal and a browser.
+> **Status: early.** Part 1, The Desktop, is playable: missions 0–9, from Recruitment to Rescue Protocol. Part 2, The Command Line, is coming. Lockdown logs out and Rescue Protocol closes every window, so play them on the learner's own account. From mission 3 on, the Academy waits in a corner while the learner uses the real desktop: it opens and closes a terminal and a browser.
 
 ## Install
 
@@ -20,7 +20,7 @@ Click the robot button in the top bar. Or from a terminal:
 omarchy-shell shell toggle io.github.namlet.hacker-academy
 ```
 
-Press Esc, or click "close", to dismiss it. Progress is saved to `~/.local/state/io.github.namlet.hacker-academy.json` and picks up where the learner left off. **Settings** in the panel lets a grown-up skip a mission or reset progress.
+Press Esc, or click "close", to dismiss it. Progress is saved to `~/.local/state/io.github.namlet.hacker-academy.json` and picks up where the learner left off. **Settings** in the panel lets a grown-up skip a mission, reset progress, or switch the characters between their own 8-bit colors and the current Omarchy theme's.
 
 ## Update
 

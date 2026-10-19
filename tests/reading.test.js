@@ -1,7 +1,7 @@
 // Every line a learner sees must read at a 5th-grade level (see DESIGN.md).
 const { test } = require("node:test")
 const assert = require("node:assert/strict")
-const { MISSIONS, UI } = require("../Missions.js")
+const { MISSIONS, CAMPAIGN, UI } = require("../Missions.js")
 
 const MAX_WORDS_PER_SENTENCE = 14
 const MAX_SENTENCES_PER_BUBBLE = 2
@@ -19,7 +19,7 @@ function bubbles() {
       if (step.expect.label) out.push(step.expect.label)
     }
   }
-  return out.concat(Object.values(UI))
+  return out.concat(Object.values(UI), CAMPAIGN.titles, [CAMPAIGN.part, CAMPAIGN.nextPart])
 }
 
 function sentences(text) {

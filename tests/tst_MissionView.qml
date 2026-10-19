@@ -2,6 +2,7 @@ import QtQuick
 import QtTest
 import "../components"
 import "../Engine.js" as Engine
+import "../Missions.js" as Missions
 
 Item {
   width: 1100
@@ -21,6 +22,7 @@ Item {
     when: windowShown
 
     function init() {
+      view.loginSession = ""
       view.progress = Engine.newProgress()
       view.begin()
       saved.clear()
@@ -66,7 +68,7 @@ Item {
       waitForCelebration()
       compare(view.session.step, 3)
       verify(findChild(view, "lines").text.indexOf("Welcome to the Academy, Zero.") !== -1)
-      verify(findChild(view, "badge").visible)
+      verify(findChild(view, "rankUp").visible)
       saved.clear()
       clickItem("button-finish")
       compare(saved.count, 0)
@@ -184,7 +186,7 @@ Item {
       view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2], current: null }
       view.begin()
       compare([view.session.mission, view.session.step], [3, 0])
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], current: null }
       view.begin()
       verify(view.finishedAll)
       verify(findChild(view, "comingSoon").visible)
@@ -229,7 +231,7 @@ Item {
         verify(!bug.visible, "caught bugs disappear")
       }
       verify(view.celebrating)
-      compare(findChild(view, "tally").text, "5 of 5")
+      compare(findChild(view, "tally").text, "5/5")
     }
 
     // Drag like a hand: press on the bug, move across the playground (which stays put), let go.
@@ -240,6 +242,19 @@ Item {
       for (let i = 1; i <= 8; i++)
         mouseMove(area, from.x + (toX - from.x) * i / 8, from.y + (toY - from.y) * i / 8, 10)
       mouseRelease(area, toX, toY)
+    }
+
+    function test_the_meter_fills_as_bugs_are_caught() {
+      startMissionOne()
+      view.session = Object.assign({}, view.session, { step: 1 })
+      wait(20)
+      verify(findChild(view, "meter").visible)
+      compare(findChild(view, "tally").text, "0/5")
+      mouseClick(target("bug1"))
+      compare(findChild(view, "tally").text, "1/5")
+      view.session = Object.assign({}, view.session, { step: 0, hits: [] })
+      wait(20)
+      verify(!findChild(view, "meter").visible, "one thing to do needs no meter")
     }
 
     function test_mission_one_drag_misses_then_lands_in_the_jar() {
@@ -330,7 +345,7 @@ Item {
       keyClick(Qt.Key_Shift)
       for (const k of [Qt.Key_H, Qt.Key_A, Qt.Key_C, Qt.Key_K]) keyClick(k)
       verify(!view.celebrating)
-      compare(findChild(view, "tally").text, "4 of 5")
+      compare(findChild(view, "tally").text, "4/5")
       keyClick(Qt.Key_S)
       verify(view.celebrating)
       compare(findChild(view, "typed").text, "h a c k s")
@@ -391,11 +406,11 @@ Item {
     function windowOpens(address, appClass) { view.windowEvent({ name: "openwindow", data: address + ",1," + appClass + ",A window" }) }
     function windowCloses(address) { view.windowEvent({ name: "closewindow", data: address }) }
 
-    function test_mission_three_sits_small_in_a_corner_and_lets_go_of_the_keyboard() {
+    function test_mission_three_sits_small_in_a_corner() {
       startMissionTwo(0)
       const keyboardWidth = view.implicitWidth
       startMissionThree(0)
-      compare([view.stage, view.holdKeyboard], ["corner", false])
+      compare(view.stage, "corner")
       verify(!findChild(view, "keyboard").visible)
       verify(view.implicitWidth < keyboardWidth)
     }
@@ -404,13 +419,13 @@ Item {
       startMissionTwo(0)
       compare(view.keyboardFocus, "exclusive")
       startMissionThree(0)
-      compare(view.keyboardFocus, "onDemand")
+      compare(view.keyboardFocus, "exclusive", "Enter presses the button")
       for (const step of [1, 2, 3, 4]) {
         startMissionThree(step)
         compare(view.keyboardFocus, "none", "step " + step)
       }
       startMissionThree(5)
-      compare(view.keyboardFocus, "onDemand")
+      compare(view.keyboardFocus, "exclusive", "Enter finishes, even with no window left to give it focus")
     }
 
     function test_mission_three_end_to_end() {
@@ -442,7 +457,7 @@ Item {
       windowCloses("b1")
       waitForCelebration()
 
-      verify(findChild(view, "badge").visible)
+      verify(findChild(view, "rankUp").visible)
       compare([view.implicitWidth, view.implicitHeight], [w, h])
       clickItem("button-finish")
       waitForCelebration()
@@ -473,6 +488,297 @@ Item {
       verify(view.celebrating)
     }
 
+    // ------------------------------------------------------------ mission 4
+
+    function startMissionFour(step) {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3], current: { mission: 4, step: step, codename: "Zero" } }
+      view.begin()
+      wait(20)
+    }
+
+    function focusOn(address) { view.windowEvent({ name: "activewindowv2", data: address }) }
+    function fullscreen(on) { view.windowEvent({ name: "fullscreen", data: on ? "1" : "0" }) }
+
+    function test_mission_four_end_to_end() {
+      startMissionFour(0)
+      const w = view.implicitWidth, h = view.implicitHeight
+      compare(view.stage, "corner")
+      clickItem("button-ready")
+      waitForCelebration()
+
+      verify(findChild(view, "meter").visible)
+      windowOpens("t1", "foot")
+      focusOn("t1")
+      compare(findChild(view, "tally").text, "1/2")
+      windowOpens("t2", "foot")
+      focusOn("t2")
+      waitForCelebration()
+
+      compare(view.keyboardFocus, "none", "the spotlight stays on the learner's windows")
+      focusOn("t2")
+      verify(!view.celebrating, "a title change isn't a move")
+      focusOn("t1")
+      waitForCelebration()
+      focusOn("t2")
+      waitForCelebration()
+
+      fullscreen(true)
+      waitForCelebration()
+      fullscreen(false)
+      waitForCelebration()
+
+      windowCloses("t2")
+      compare(findChild(view, "tally").text, "1/2")
+      windowCloses("t1")
+      waitForCelebration()
+
+      compare(view.session.step, 7)
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+      clickItem("button-finish")
+      waitForCelebration()
+      verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(4) !== -1)
+    }
+
+    function test_steps_without_a_button_give_the_rank_up_no_button_name() {
+      startMissionFour(2)
+      compare(findChild(view, "rankUp").buttonId, "")
+    }
+
+    function test_the_glitch_speaks_with_its_own_picture() {
+      startMissionFour(1)
+      compare(findChild(view, "portraitSprite").sprite, "glitch")
+    }
+
+    function test_mission_four_resumes_where_the_terminals_get_opened() {
+      startMissionFour(4)
+      compare(view.session.step, 1, "after logging out the terminals are gone")
+    }
+
+    // ------------------------------------------------------------ mission 5
+
+    function startMissionFive(step) {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4], current: { mission: 5, step: step, codename: "Zero" } }
+      view.begin()
+      wait(20)
+    }
+
+    function place(address, x, y, w, h, floating) { view.windowGeometry({ address: "0x" + address, at: [x, y], size: [w, h], floating: floating }) }
+    function floats(address, on) { view.windowEvent({ name: "changefloatingmode", data: address + "," + (on ? 1 : 0) }) }
+
+    function test_mission_five_end_to_end() {
+      startMissionFive(0)
+      const w = view.implicitWidth, h = view.implicitHeight
+      clickItem("button-ready")
+      waitForCelebration()
+      verify(!view.watchesLayout)
+      windowOpens("t1", "foot")
+      windowOpens("t2", "foot")
+      waitForCelebration()
+
+      verify(view.watchesLayout, "swapping sends no event")
+      compare(view.keyboardFocus, "none")
+      place("t1", 12, 12, 941, 1030, false)
+      place("t2", 967, 12, 941, 1030, false)
+      verify(!view.celebrating)
+      place("t1", 967, 12, 941, 1030, false)
+      waitForCelebration()
+
+      floats("t2", true)
+      waitForCelebration()
+      place("t2", 5, 5, 960, 1044, true)
+      verify(!view.celebrating, "where floating put it is the start")
+      place("t2", 400, 300, 960, 1044, true)
+      waitForCelebration()
+      place("t2", 400, 300, 960, 1044, true)
+      place("t2", 400, 300, 700, 600, true)
+      waitForCelebration()
+      floats("t2", false)
+      waitForCelebration()
+
+      windowCloses("t1")
+      windowCloses("t2")
+      waitForCelebration()
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+      clickItem("button-finish")
+      waitForCelebration()
+      verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(5) !== -1)
+    }
+
+    // ------------------------------------------------------------ mission 6
+
+    function startMissionSix(step) {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5], current: { mission: 6, step: step, codename: "Zero" } }
+      view.begin()
+      view.homeRoom = 2
+      view.secretRoom = 3
+      wait(20)
+    }
+
+    function goTo(n) { view.windowEvent({ name: "workspacev2", data: n + "," + n }) }
+
+    function test_mission_six_end_to_end() {
+      startMissionSix(0)
+      const w = view.implicitWidth, h = view.implicitHeight
+      clickItem("button-ready")
+      waitForCelebration()
+
+      compare(findChild(view, "instruction").text, "Go to room 3.")
+      verify(findChild(view, "combo-3").visible, "the room's number is the key to press")
+      goTo(1)
+      verify(!view.celebrating, "the wrong room doesn't count")
+      goTo(3)
+      waitForCelebration()
+      goTo(2)
+      waitForCelebration()
+      windowOpens("t1", "foot")
+      waitForCelebration()
+      view.windowEvent({ name: "movewindowv2", data: "t1,3,3" })
+      waitForCelebration()
+      windowCloses("t1")
+      waitForCelebration()
+      goTo(2)
+      waitForCelebration()
+
+      verify(findChild(view, "rankUp").visible)
+      compare(findChild(view, "rankName").text, "SPECIALIST")
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+      clickItem("button-finish")
+      waitForCelebration()
+      verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(6) !== -1)
+    }
+
+    function test_rooms_show_a_question_mark_until_picked() {
+      startMissionSix(1)
+      view.secretRoom = 0
+      compare(findChild(view, "instruction").text, "Go to room ?.")
+    }
+
+    // ------------------------------------------------------------ mission 7
+
+    function startMissionSeven(step) {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6], current: { mission: 7, step: step, codename: "Zero" } }
+      view.begin()
+      wait(20)
+    }
+
+    function menu(open) { view.windowEvent({ name: open ? "openlayer" : "closelayer", data: "omarchy-menu" }) }
+
+    function test_mission_seven_end_to_end() {
+      startMissionSeven(0)
+      const w = view.implicitWidth, h = view.implicitHeight
+      clickItem("button-ready")
+      waitForCelebration()
+
+      compare(view.keyboardFocus, "none", "the menu gets the keys")
+      menu(true)
+      waitForCelebration()
+      verify(findChild(view, "combo-Esc").visible)
+      menu(false)
+      waitForCelebration()
+      windowOpens("calc", "omacalc")
+      waitForCelebration()
+      windowCloses("calc")
+      waitForCelebration()
+      menu(true)
+      waitForCelebration()
+      menu(false)
+      waitForCelebration()
+
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+      clickItem("button-finish")
+      waitForCelebration()
+      verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(7) !== -1)
+    }
+
+    // ------------------------------------------------------------ mission 8
+
+    function startMissionEight(step, login) {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7], current: { mission: 8, step: step, codename: "Zero", login: login || "" } }
+      view.begin()
+      wait(20)
+    }
+
+    function test_mission_eight_locks_and_unlocks() {
+      view.loginSession = "47"
+      startMissionEight(0)
+      const w = view.implicitWidth, h = view.implicitHeight
+      clickItem("button-ready")
+      waitForCelebration()
+
+      verify(view.watchesLock)
+      compare(view.keyboardFocus, "none", "the lock screen gets the keys")
+      view.lockState(false)
+      verify(!view.celebrating, "not locked yet")
+      view.lockState(true)
+      waitForCelebration()
+      view.lockState(true)
+      verify(!view.celebrating, "still locked")
+      view.lockState(false)
+      waitForCelebration()
+      verify(!view.watchesLock)
+      menu(true)
+      waitForCelebration()
+      menu(false)
+      waitForCelebration()
+
+      compare(view.expectType, "login")
+      compare(saved.signalArguments[saved.count - 1][0].current.login, "47", "the step remembers this login")
+      view.arrive()
+      verify(!view.celebrating, "the same login: not logged out yet")
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+    }
+
+    function test_mission_eight_resumes_after_logging_back_in() {
+      view.loginSession = "52"
+      startMissionEight(5, "47")
+      compare(view.expectType, "login")
+      view.arrive()
+      waitForCelebration()
+      clickItem("button-finish")
+      waitForCelebration()
+      verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(8) !== -1)
+    }
+
+    // ------------------------------------------------------------ mission 9
+
+    function test_mission_nine_end_to_end() {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8], current: { mission: 9, step: 0, codename: "Zero" } }
+      view.begin()
+      wait(20)
+      const w = view.implicitWidth, h = view.implicitHeight
+      clickItem("button-ready")
+      waitForCelebration()
+      menu(true)
+      waitForCelebration()
+      menu(false)
+      waitForCelebration()
+      menu(true)
+      waitForCelebration()
+      menu(false)
+      waitForCelebration()
+
+      windowOpens("t1", "foot")
+      windowOpens("t2", "foot")
+      verify(!view.celebrating, "two of three")
+      windowOpens("t3", "foot")
+      waitForCelebration()
+      verify(findChild(view, "combo-Delete").visible)
+      windowCloses("t1")
+      windowCloses("t2")
+      windowCloses("t3")
+      waitForCelebration()
+
+      clickItem("button-help")
+      waitForCelebration()
+      verify(findChild(view, "rankUp").visible)
+      compare(findChild(view, "rankName").text, "WHITE HAT")
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+      clickItem("button-finish")
+      waitForCelebration()
+      verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(9) !== -1)
+      verify(view.partDone)
+    }
+
     function test_mission_three_keys_light_up_when_help_grows() {
       startMissionThree(1)
       verify(!findChild(view, "combo-Win").lit)
@@ -480,6 +786,90 @@ Item {
       verify(findChild(view, "combo-Win").lit && findChild(view, "combo-Enter").lit)
       // The keyboard picture stays away: Omarchy's shortcuts never reach it.
       verify(!findChild(view, "keyboard").visible)
+    }
+
+    // ------------------------------------------------------------ progress and ranks
+
+    function test_the_strip_shows_missions_done_now_and_locked() {
+      startMissionOne()
+      compare(findChild(view, "mission-0").missionState, "done")
+      compare(findChild(view, "mission-1").missionState, "now")
+      compare(findChild(view, "mission-2").missionState, "locked")
+      compare(findChild(view, "mission-9").missionState, "locked")
+      compare(findChild(view, "stepPips").children.length - 1, view.mission.steps.length)
+    }
+
+    function test_the_rank_shows_once_earned() {
+      verify(!findChild(view, "rankChip").visible, "no rank before recruitment")
+      startMissionOne()
+      verify(findChild(view, "rankChip").visible)
+      compare(findChild(view, "rankChipText").text, "RECRUIT")
+    }
+
+    function test_recruitment_ends_on_the_recruit_badge() {
+      view.session = { mission: 0, step: 3, count: 0, hits: [], idleMs: 0, hint: 0, codename: "Zero", windows: [], celebrating: false, done: false }
+      wait(20)
+      verify(findChild(view, "rankUp").visible)
+      verify(!findChild(view, "portrait").visible, "the rank-up takes the whole body")
+      compare(findChild(view, "rankName").text, "RECRUIT")
+      compare(findChild(view, "rankBadge").sprite, "recruitBadge")
+      verify(findChild(view, "rankLine").text.indexOf("You are now a Recruit.") !== -1)
+    }
+
+    function test_the_agent_badge_fits_the_corner_window() {
+      startMissionThree(0)
+      const w = view.implicitWidth, h = view.implicitHeight
+      startMissionThree(5)
+      verify(findChild(view, "rankUp").visible)
+      compare(findChild(view, "rankName").text, "AGENT")
+      compare(findChild(view, "rankBadge").sprite, "agentBadge")
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+    }
+
+    function test_the_map_shows_the_campaign_when_every_mission_is_done() {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], current: null }
+      view.begin()
+      wait(20)
+      verify(findChild(view, "campaignMap").visible)
+      verify(findChild(view, "badge-Recruit").border.color === findChild(view, "badge-White Hat").border.color, "all earned")
+      compare(findChild(view, "comingSoon").text, Missions.UI.partDone)
+    }
+
+    function test_character_colors_can_follow_the_theme() {
+      compare(findChild(view, "portraitSprite").mode, "classic")
+      clickItem("settingsButton")
+      clickItem("settings-colors")
+      compare(saved.signalArguments[0][0].settings.characterColors, "theme")
+      compare(findChild(view, "portraitSprite").mode, "theme")
+      clickItem("settings-reset")
+      clickItem("settings-reset")
+      compare(view.progress.settings.characterColors, "theme", "a reset keeps the setting")
+    }
+
+    function test_settings_back_returns_to_the_mission() {
+      clickItem("settingsButton")
+      verify(!findChild(view, "portrait").visible, "settings take the body's place")
+      clickItem("settings-back")
+      verify(!findChild(view, "settings").visible)
+      verify(findChild(view, "portrait").visible)
+    }
+
+    function test_settings_reset_asks_first_and_colors_show_the_choice() {
+      clickItem("settingsButton")
+      verify(findChild(view, "colors-classic").filled)
+      verify(!findChild(view, "colors-theme").filled)
+      clickItem("settings-colors")
+      verify(findChild(view, "colors-theme").filled)
+      clickItem("settings-reset")
+      verify(view.confirmingReset, "the first click only asks")
+      compare(view.session.mission, 0)
+    }
+
+    function test_nothing_to_skip_once_every_mission_is_done() {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], current: null }
+      view.begin()
+      clickItem("settingsButton")
+      verify(!findChild(view, "settings-skip").visible)
     }
 
     function test_settings_skip_and_reset() {

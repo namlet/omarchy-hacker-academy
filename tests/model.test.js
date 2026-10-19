@@ -135,3 +135,27 @@ test("terminals and browsers are recognised like Omarchy tags them", () => {
   for (const c of ["org.gnome.Nautilus", "footclient-ish", "chromium-app", ""])
     assert.equal(Model.appKind(c), "", c)
 })
+
+test("focus and full screen come from Hyprland's raw events", () => {
+  assert.deepEqual(Model.windowEvent({ name: "activewindowv2", data: "5cdbbf578f00" }), { action: "focus", address: "5cdbbf578f00", app: "" })
+  assert.deepEqual(Model.windowEvent({ name: "activewindowv2", data: "" }), { action: "focus", address: "", app: "" })
+  assert.equal(Model.windowEvent({ name: "fullscreen", data: "1" }).on, true)
+  assert.equal(Model.windowEvent({ name: "fullscreen", data: "0" }).on, false)
+  assert.equal(Model.windowEvent({ name: "activewindow", data: "foot,~" }), null, "the older event is ignored")
+})
+
+test("floating comes from Hyprland's raw events", () => {
+  assert.deepEqual(Model.windowEvent({ name: "changefloatingmode", data: "5cdbbfaf53c0,1" }), { action: "float", address: "5cdbbfaf53c0", on: true, app: "" })
+  assert.equal(Model.windowEvent({ name: "changefloatingmode", data: "5cdbbfaf53c0,0" }).on, false)
+})
+
+test("switching workspaces and carrying windows come from Hyprland's raw events", () => {
+  assert.deepEqual(Model.windowEvent({ name: "workspacev2", data: "8,8" }), { action: "workspace", workspace: 8, address: "", app: "" })
+  assert.deepEqual(Model.windowEvent({ name: "movewindowv2", data: "5cdbbfae7dc0,8,8" }), { action: "carry", address: "5cdbbfae7dc0", workspace: 8, app: "" })
+})
+
+test("Omarchy's menus opening and closing come from layer events", () => {
+  assert.deepEqual(Model.windowEvent({ name: "openlayer", data: "omarchy-menu" }), { action: "menu", on: true, address: "", app: "" })
+  assert.equal(Model.windowEvent({ name: "closelayer", data: "omarchy-menu" }).on, false)
+  assert.equal(Model.windowEvent({ name: "openlayer", data: "hacker-academy" }), null, "the Academy's own window isn't a menu")
+})

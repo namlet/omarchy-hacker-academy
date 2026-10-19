@@ -3,16 +3,22 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import "../components"
 import "../Sprites.js" as Sprites
+import "../Theme.js" as Theme
 
-// Every sprite at a few sizes, on a dark and a light theme, for checking the art.
+// Every sprite at two sizes, on a dark and a light theme, in its own colors and
+// matching the theme, for checking the art.
 //   make preview              opens a window
 //   make preview PNG=out.png  saves a picture instead
 Rectangle {
   id: root
 
   readonly property var themes: [
-    { name: "dark", background: "#1a1b26", line: "#c0caf5", bolt: "#7dcfff", accent: "#ff9e64", dim: "#565f89" },
-    { name: "light", background: "#f5f5f0", line: "#1f2335", bolt: "#2e7de9", accent: "#b15c00", dim: "#8990b3" }
+    { name: "dark, classic", mode: "classic", palette: Theme.DEFAULT_PALETTE },
+    { name: "dark, match theme", mode: "theme", palette: Theme.palette({ green: "#9ece6a", yellow: "#ff9e64", red: "#f7768e", magenta: "#bb9af7", cyan: "#7dcfff" },
+      { background: "#1a1b26", foreground: "#c0caf5", accent: "#bb9af7", urgent: "#f7768e", muted: "#414868" }) },
+    { name: "light, classic", mode: "classic", palette: Theme.palette({}, { background: "#f5f5f0", foreground: "#1f2335", accent: "#2e7de9", urgent: "#c64343", muted: "#a8aecb" }) },
+    { name: "light, match theme", mode: "theme", palette: Theme.palette({ green: "#587539", yellow: "#b15c00", magenta: "#9854f1", cyan: "#007197" },
+      { background: "#f5f5f0", foreground: "#1f2335", accent: "#2e7de9", urgent: "#c64343", muted: "#a8aecb" }) }
   ]
   readonly property string pngPath: {
     const args = Qt.application.arguments
@@ -38,7 +44,7 @@ Rectangle {
         required property var modelData
         width: row.width + 40
         height: row.height + 40
-        color: themeRow.modelData.background
+        color: themeRow.modelData.palette.ground
 
         Row {
           id: row
@@ -57,24 +63,21 @@ Rectangle {
               Row {
                 spacing: 12
                 Repeater {
-                  model: [2, 4, 8]
+                  model: [3, 6]
                   PixelSprite {
                     required property int modelData
                     sprite: spriteColumn.modelData
                     width: implicitWidth / 4 * modelData
                     height: implicitHeight / 4 * modelData
-                    lineColor: themeRow.modelData.line
-                    boltColor: themeRow.modelData.bolt
-                    accentColor: themeRow.modelData.accent
-                    dimColor: themeRow.modelData.dim
-                    backgroundColor: themeRow.modelData.background
+                    theme: themeRow.modelData.palette
+                    mode: themeRow.modelData.mode
                   }
                 }
               }
 
               Text {
                 text: spriteColumn.modelData
-                color: themeRow.modelData.line
+                color: themeRow.modelData.palette.text
                 font.family: "monospace"
                 font.pixelSize: 14
               }

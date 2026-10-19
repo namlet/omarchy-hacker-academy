@@ -37,7 +37,69 @@ test("missing, broken, or foreign progress starts fresh", () => {
 
 test("progress drops invalid entries instead of failing", () => {
   const p = Engine.parseProgress('{"version": 1, "codename": "<script>", "completed": [0, -1, "x", 2]}')
-  assert.deepEqual(p, { version: 1, codename: "", completed: [0, 2], current: null })
+  assert.deepEqual(p, { version: 1, codename: "", completed: [0, 2], current: null, settings: { characterColors: "classic" } })
+})
+
+test("settings survive saving, finishing missions, and a reset", () => {
+  let p = Engine.withSettings(Engine.newProgress(), { characterColors: "theme" })
+  p = Engine.parseProgress(Engine.serializeProgress(p))
+  p = Engine.completeMission(p, 0, "Zero")
+  p = Engine.rememberStep(p, Engine.startMission(1))
+  assert.equal(p.settings.characterColors, "theme")
+  p = Engine.resetProgress(p)
+  assert.deepEqual([p.completed, p.codename, p.settings.characterColors], [[], "", "theme"])
+})
+
+test("progress saved before settings existed gets the defaults", () => {
+  const p = Engine.parseProgress('{"version": 1, "codename": "Zero", "completed": [0], "current": null}')
+  assert.deepEqual(p.settings, { characterColors: "classic" })
+  assert.equal(Engine.withSettings(p, { characterColors: "neon" }).settings.characterColors, "classic")
+})
+
+// ---------------------------------------------------------------- campaign
+
+const { CAMPAIGN } = require("../Missions.js")
+
+test("ranks are earned by finishing the first mission of their group", () => {
+  const done = (completed) => ({ completed })
+  assert.equal(Engine.rankIndex(CAMPAIGN, done([])), -1)
+  assert.equal(Engine.rankIndex(CAMPAIGN, done([0, 1, 2])), 0)
+  assert.equal(Engine.rankIndex(CAMPAIGN, done([0, 1, 2, 3])), 1)
+})
+
+test("the campaign shows each mission as done, being played, or locked", () => {
+  const view = Engine.campaignView(CAMPAIGN, { completed: [0, 1] }, 2)
+  assert.deepEqual(view.map((r) => r.name), ["Recruit", "Agent", "Specialist", "White Hat"])
+  assert.deepEqual(view[0].missions.map((m) => m.state), ["done", "done", "now"])
+  assert.deepEqual(view[1].missions.map((m) => m.state), ["locked", "locked", "locked"])
+  assert.deepEqual(view.map((r) => r.earned), [true, false, false, false])
+  assert.equal(view[0].missions[1].title, "Pointer Control")
+  assert.equal(view.flatMap((r) => r.missions).length, CAMPAIGN.titles.length)
+})
+
+test("step states mark the celebrated step as done", () => {
+  assert.deepEqual(Engine.stepStates(4, 1, false), ["done", "now", "todo", "todo"])
+  assert.deepEqual(Engine.stepStates(4, 1, true), ["done", "done", "todo", "todo"])
+})
+
+test("mission numbers are two digits", () => {
+  assert.deepEqual([Engine.missionNumber(3), Engine.missionNumber(10)], ["03", "10"])
+})
+
+test("every mission built so far is in the campaign, under its own title", () => {
+  const { MISSIONS } = require("../Missions.js")
+  MISSIONS.forEach((m, i) => assert.equal(CAMPAIGN.titles[i], m.title))
+  const ranked = CAMPAIGN.ranks.flatMap((r) => r.missions)
+  assert.deepEqual(ranked, CAMPAIGN.titles.map((_, i) => i))
+})
+
+test("each rank's first mission ends on that rank's badge", () => {
+  const { MISSIONS } = require("../Missions.js")
+  for (const rank of CAMPAIGN.ranks) {
+    const mission = MISSIONS[rank.missions[0]]
+    if (!mission) continue
+    assert.equal(mission.steps[mission.steps.length - 1].badge, rank.name)
+  }
 })
 
 test("the next mission is the first one not completed", () => {
@@ -277,12 +339,212 @@ test("mission 0 can be completed with the real script, keyboard only", () => {
 test("every step has a speaker, 1-2 lines, a known expectation, and full help", () => {
   for (const mission of MISSIONS) {
     for (const step of mission.steps) {
-      assert.ok(["mentor", "bolt"].includes(step.speaker))
+      assert.ok(["mentor", "bolt", "glitch"].includes(step.speaker))
       assert.ok(step.lines.length >= 1 && step.lines.length <= 2)
-      assert.ok(["button", "key", "codename", "pointer", "anykey", "hold", "capital", "tap", "window"].includes(step.expect.type))
+      assert.ok(["button", "key", "codename", "pointer", "anykey", "hold", "capital", "tap", "window", "focus", "fullscreen", "swap", "float", "move", "resize", "workspace", "carry", "menu", "lock", "login"].includes(step.expect.type))
       assert.ok(step.hint.bolt && step.hint.demo && Array.isArray(step.hint.keys))
-      assert.ok(["mentor", "bolt"].includes(step.success.speaker) && step.success.line)
-      if (step.expect.type === "window") assert.ok(step.combo && step.combo.length >= 2, "a window step shows its keys")
+      assert.ok(["mentor", "bolt", "glitch"].includes(step.success.speaker) && step.success.line)
+      if (["window", "focus", "fullscreen", "swap", "float", "move", "resize", "workspace", "carry", "menu", "lock", "login"].includes(step.expect.type)) assert.ok(step.combo && step.combo.length >= 1, "a desktop step shows its keys")
     }
   }
+})
+
+// ---------------------------------------------------------------- the spotlight
+
+function spotlight() {
+  const step = (expect, extra) => Object.assign({ expect }, extra || {})
+  const two = { needs: { app: "terminal", count: 2 } }
+  return [{ steps: [
+    step({ type: "window", action: "open", app: "terminal", times: 2 }),
+    step({ type: "focus" }, two),
+    step({ type: "fullscreen", on: true }, two),
+    step({ type: "fullscreen", on: false }, two),
+    step({ type: "window", action: "close", app: "terminal", times: 2 })
+  ] }]
+}
+
+// Events arrive together, as from Hyprland; the celebration (and moving on) happens
+// after them, as it does on screen two seconds later.
+function play(missions, events, session) {
+  let s = session || Engine.startMission(0)
+  for (const e of events) s = Engine.handle(missions, s, Object.assign({ type: "window" }, e))
+  return s.celebrating ? Engine.finishCelebration(missions, s) : s
+}
+
+test("a step can ask for two windows, and counts them", () => {
+  const m = spotlight()
+  let s = play(m, [{ action: "open", address: "a", app: "terminal" }])
+  assert.deepEqual([s.step, s.count], [0, 1])
+  s = play(m, [{ action: "open", address: "b", app: "browser" }], s)
+  assert.equal(s.count, 1, "a browser isn't a terminal")
+  s = play(m, [{ action: "open", address: "b", app: "terminal" }], s)
+  assert.equal(s.step, 1)
+})
+
+test("moving the spotlight counts only onto another of the learner's windows", () => {
+  const m = spotlight()
+  let s = play(m, [
+    { action: "open", address: "a", app: "terminal" }, { action: "focus", address: "a" },
+    { action: "open", address: "b", app: "terminal" }, { action: "focus", address: "b" }])
+  assert.equal(s.step, 1, "the new terminal taking the spotlight, mid-celebration, doesn't count")
+  s = play(m, [{ action: "focus", address: "b" }], s)
+  assert.equal(s.step, 1, "the same window again (a title change) isn't a move")
+  s = play(m, [{ action: "focus", address: "grownups" }], s)
+  assert.equal(s.step, 1, "someone else's window doesn't count")
+  s = play(m, [{ action: "focus", address: "a" }], s)
+  assert.equal(s.step, 2)
+})
+
+test("full screen counts for the learner's window, on and then off", () => {
+  const m = spotlight()
+  let s = play(m, [{ action: "open", address: "a", app: "terminal" }, { action: "open", address: "b", app: "terminal" }, { action: "focus", address: "b" }])
+  s = play(m, [{ action: "focus", address: "a" }], s)
+  assert.equal(s.step, 2)
+  s = play(m, [{ action: "fullscreen", on: false }], s)
+  assert.equal(s.step, 2, "turning it off first isn't the task")
+  s = play(m, [{ action: "fullscreen", on: true }], s)
+  s = play(m, [{ action: "fullscreen", on: false }], s)
+  assert.equal(s.step, 4)
+  s = play(m, [{ action: "focus", address: "grownups" }, { action: "fullscreen", on: true }], s)
+  assert.equal(s.step, 4)
+  s = play(m, [{ action: "close", address: "a" }, { action: "close", address: "grownups" }], s)
+  assert.deepEqual([s.step, s.count], [4, 1], "only the learner's windows count as closed")
+  s = play(m, [{ action: "close", address: "b" }], s)
+  assert.ok(s.done)
+})
+
+test("a step that needs the learner's windows resumes where they get opened", () => {
+  const m = spotlight()
+  const at = (step) => ({ version: 1, codename: "Zero", completed: [], current: { mission: 0, step, codename: "Zero" } })
+  assert.equal(Engine.resume(m, at(3)).step, 0, "no terminals left after logging out")
+  const previous = Object.assign(Engine.startMission(0), { windows: [{ address: "a", app: "terminal" }, { address: "b", app: "terminal" }], focused: "a" })
+  const s = Engine.resume(m, at(3), previous)
+  assert.deepEqual([s.step, s.focused], [3, "a"], "both still open: carry on")
+})
+
+// ---------------------------------------------------------------- rearranging HQ
+
+function arranging() {
+  const two = { needs: { app: "terminal", count: 2 } }
+  return [{ steps: [
+    { expect: { type: "window", action: "open", app: "terminal", times: 2 } },
+    Object.assign({ expect: { type: "swap" } }, two),
+    Object.assign({ expect: { type: "float", on: true } }, two),
+    Object.assign({ expect: { type: "move" } }, two),
+    Object.assign({ expect: { type: "resize" } }, two),
+    Object.assign({ expect: { type: "float", on: false } }, two)
+  ] }]
+}
+
+const at = (address, x, y, w, h, floating) => ({ action: "geometry", address, at: [x, y], size: [w, h], floating: !!floating })
+
+test("swapping counts when a tiled window of the learner's moves to another spot", () => {
+  const m = arranging()
+  let s = play(m, [{ action: "open", address: "a", app: "terminal" }, { action: "open", address: "b", app: "terminal" }])
+  assert.equal(s.step, 1)
+  s = play(m, [at("a", 12, 12, 941, 1030), at("b", 967, 12, 941, 1030), at("grownups", 0, 0, 100, 100)], s)
+  s = play(m, [at("grownups", 900, 0, 100, 100), at("a", 30, 12, 941, 1030)], s)
+  assert.equal(s.step, 1, "someone else's window, or a nudge, doesn't count")
+  s = play(m, [at("a", 967, 12, 941, 1030)], s)
+  assert.equal(s.step, 2)
+})
+
+test("floating, dragging, resizing, and tiling again each count once, for the learner's window", () => {
+  const m = arranging()
+  let s = play(m, [{ action: "open", address: "a", app: "terminal" }, { action: "open", address: "b", app: "terminal" }])
+  s = play(m, [at("a", 12, 12, 941, 1030)], s)
+  s = play(m, [at("a", 967, 12, 941, 1030)], s)
+  assert.equal(s.step, 2)
+  s = play(m, [{ action: "float", address: "grownups", on: true }], s)
+  assert.equal(s.step, 2)
+  s = play(m, [{ action: "float", address: "b", on: true }], s)
+  assert.equal(s.step, 3)
+  // Floating moved the window; that was before this step, so it's the starting point.
+  s = play(m, [at("b", 5, 5, 960, 1044, true)], s)
+  assert.equal(s.step, 3, "where floating put it doesn't count as a drag")
+  s = play(m, [at("b", 300, 200, 960, 1044, true)], s)
+  assert.equal(s.step, 4)
+  s = play(m, [at("b", 300, 200, 960, 1044, true), at("b", 300, 200, 1100, 1044, true)], s)
+  assert.equal(s.step, 5)
+  s = play(m, [{ action: "float", address: "b", on: false }], s)
+  assert.ok(s.done)
+})
+
+// ---------------------------------------------------------------- secret rooms
+
+test("going to a room, and carrying the learner's own window there", () => {
+  const m = [{ steps: [
+    { expect: { type: "workspace", to: "room" } },
+    { expect: { type: "workspace", to: "home" } },
+    { expect: { type: "window", action: "open", app: "terminal" } },
+    { needs: { app: "terminal", count: 1 }, expect: { type: "carry", to: "room" } }
+  ] }]
+  let s = play(m, [{ action: "workspace", room: "other" }])
+  assert.equal(s.step, 0, "the wrong room doesn't count")
+  s = play(m, [{ action: "workspace", room: "room" }], s)
+  s = play(m, [{ action: "workspace", room: "home" }], s)
+  s = play(m, [{ action: "open", address: "a", app: "terminal" }], s)
+  assert.equal(s.step, 3)
+  s = play(m, [{ action: "carry", address: "grownups", room: "room" }, { action: "carry", address: "a", room: "other" }], s)
+  assert.equal(s.step, 3, "someone else's window, or another room, doesn't count")
+  s = play(m, [{ action: "carry", address: "a", room: "room" }], s)
+  assert.ok(s.done)
+})
+
+// ---------------------------------------------------------------- the toolkit
+
+test("menus open and close, and any app the learner opens can be closed", () => {
+  const m = [{ steps: [
+    { expect: { type: "menu", open: true } },
+    { expect: { type: "menu", open: false } },
+    { expect: { type: "window", action: "open", app: "any" } },
+    { expect: { type: "window", action: "close", app: "any" } }
+  ] }]
+  let s = play(m, [{ action: "menu", on: false }])
+  assert.equal(s.step, 0)
+  s = play(m, [{ action: "menu", on: true }], s)
+  s = play(m, [{ action: "menu", on: false }], s)
+  s = play(m, [{ action: "open", address: "ss", app: "screensaver" }], s)
+  assert.equal(s.step, 2, "the screensaver isn't an app the learner opened")
+  s = play(m, [{ action: "open", address: "calc", app: "" }], s)
+  assert.equal(s.step, 3, "any app counts")
+  s = play(m, [{ action: "close", address: "grownups" }], s)
+  assert.equal(s.step, 3)
+  s = play(m, [{ action: "close", address: "calc" }], s)
+  assert.ok(s.done)
+})
+
+// ---------------------------------------------------------------- lockdown
+
+test("locking and unlocking count by the screen's state", () => {
+  const m = [{ steps: [{ expect: { type: "lock", on: true } }, { expect: { type: "lock", on: false } }] }]
+  let s = Engine.startMission(0)
+  s = Engine.handle(m, s, { type: "lock", on: false })
+  assert.equal(s.celebrating, false, "an unlocked screen doesn't finish the lock step")
+  s = Engine.handle(m, s, { type: "lock", on: true })
+  s = Engine.finishCelebration(m, s)
+  s = Engine.handle(m, s, { type: "lock", on: true })
+  assert.equal(s.celebrating, false, "still locked")
+  s = Engine.handle(m, s, { type: "lock", on: false })
+  assert.ok(Engine.finishCelebration(m, s).done)
+})
+
+test("a log-out step is done when the Academy opens in another login", () => {
+  const button = { expect: { type: "button", id: "go" } }
+  const m = [{ steps: [button, { expect: { type: "login" } }, button] }]
+  let p = Engine.rememberStep(Engine.newProgress(), { mission: 0, step: 1, codename: "Zero" }, "47")
+  p = Engine.parseProgress(Engine.serializeProgress(p))
+  assert.equal(p.current.login, "47")
+  let s = Engine.resume(m, p)
+  assert.equal(Engine.handle(m, s, { type: "login", id: "47" }).celebrating, false, "the same login: not logged out yet")
+  s = Engine.handle(m, s, { type: "login", id: "52" })
+  assert.ok(s.celebrating)
+  assert.equal(Engine.finishCelebration(m, s).step, 2)
+})
+
+test("a log-out step never finishes without a remembered login", () => {
+  const m = [{ steps: [{ expect: { type: "login" } }] }]
+  const p = Engine.parseProgress('{"version": 1, "completed": [], "current": {"mission": 0, "step": 0, "codename": "", "login": "../x"}}')
+  assert.equal(p.current.login, "")
+  assert.equal(Engine.handle(m, Engine.resume(m, p), { type: "login", id: "52" }).celebrating, false)
 })

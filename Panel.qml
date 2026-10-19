@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import qs.Commons
 import "components"
 import "Engine.js" as Engine
+import "Theme.js" as Theme
 
 // Shell adapter: shows the mission view, loads and saves progress, and places the
 // window for the current mission. No lesson logic here — it lives in Engine.js,
@@ -25,14 +26,34 @@ Item {
   function open(payloadJson) {
     root.opened = true
     view.begin()
+    view.arrive()
     // Play on a workspace of its own, away from anyone else's windows.
     const ws = Hyprland.focusedWorkspace
     if (ws && view.needsOwnWorkspace(ws.toplevels.values.map(function(t) { return t.address })))
       Hyprland.dispatch('hl.dsp.focus({ workspace = "empty" })')
+    roomTimer.restart()
     // The window maps after open() returns; take keyboard focus once it exists.
     Qt.callLater(function() {
       if (root.opened) view.focusTask()
     })
+  }
+
+  // Home is the workspace the Academy plays on; the secret room is the lowest-numbered
+  // empty one from 2 to 9, so the learner never visits a grown-up's windows.
+  function pickRooms() {
+    const home = Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 0
+    const busy = Hyprland.workspaces.values.filter(function(w) { return w.toplevels.values.length > 0 }).map(function(w) { return w.id })
+    let room = 0
+    for (let n = 2; n <= 9 && room === 0; n++) if (n !== home && busy.indexOf(n) === -1) room = n
+    view.homeRoom = home
+    view.secretRoom = room
+  }
+
+  // Pick the rooms once the move to an empty workspace has settled.
+  Timer {
+    id: roomTimer
+    interval: 500
+    onTriggered: root.pickRooms()
   }
 
   function close() {
@@ -43,6 +64,28 @@ Item {
     if (root.shell && typeof root.shell.hide === "function")
       root.shell.hide((root.manifest && root.manifest.id) || "io.github.namlet.hacker-academy")
     else close()
+  }
+
+  // The theme's full color list (green, yellow, darker backgrounds), which the shell's
+  // Color doesn't carry. Reread when the shell's colors change, i.e. on a theme switch.
+  property string themeColors: ""
+  readonly property var academyTheme: Theme.palette(Theme.parseColors(root.themeColors), {
+    background: String(Color.background), foreground: String(Color.foreground), accent: String(Color.accent),
+    urgent: String(Color.urgent), muted: String(Color.muted)
+  })
+
+  FileView {
+    id: colorsFile
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/colors.toml"
+    printErrors: false
+    onLoaded: root.themeColors = colorsFile.text()
+    onLoadFailed: root.themeColors = ""
+  }
+
+  Connections {
+    target: Color
+    function onAccentChanged() { colorsFile.reload() }
+    function onBackgroundChanged() { colorsFile.reload() }
   }
 
   FileView {
@@ -64,6 +107,43 @@ Item {
     }
   }
 
+  // Swapping, dragging, and resizing send no event: while a step needs them, look
+  // where the windows are a couple of times a second. A refresh is read on the next
+  // tick, and only within the same step, so a step never starts from stale places.
+  Timer {
+    property string refreshedFor: ""
+    interval: 400
+    repeat: true
+    running: root.opened && view.watchesLayout
+    onTriggered: {
+      if (refreshedFor === view.stepKey) {
+        for (const t of Hyprland.toplevels.values) {
+          const ipc = t.lastIpcObject
+          if (ipc && ipc.at && ipc.size) view.windowGeometry({ address: t.address, at: ipc.at, size: ipc.size, floating: ipc.floating })
+        }
+      }
+      Hyprland.refreshToplevels()
+      refreshedFor = view.stepKey
+    }
+  }
+
+  // Locking sends no event: while a step needs it, ask the lock screen once a second.
+  Timer {
+    interval: 1000
+    repeat: true
+    running: root.opened && view.watchesLock
+    onTriggered: if (!lockQuery.running) lockQuery.running = true
+  }
+
+  Process {
+    id: lockQuery
+    command: ["omarchy-shell", "lock", "isLocked"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: view.lockState(text.trim() === "true")
+    }
+  }
+
   PanelWindow {
     visible: root.opened
     // Centered for missions inside the panel; a corner when the real desktop is the stage.
@@ -72,43 +152,29 @@ Item {
       right: view.stage === "corner"
     }
     margins { bottom: Style.space(24); right: Style.space(24) }
-    implicitWidth: card.implicitWidth
-    implicitHeight: card.implicitHeight
+    implicitWidth: view.implicitWidth
+    implicitHeight: view.implicitHeight
     color: "transparent"
     // Stay clear of the bar when sitting in a corner.
     exclusionMode: ExclusionMode.Normal
     WlrLayershell.namespace: "hacker-academy"
-    WlrLayershell.layer: WlrLayer.Top
-    // Keyboard missions hold the keyboard so a drifting pointer can't take it
-    // (Omarchy focuses whatever is under the mouse); desktop missions let go.
-    WlrLayershell.keyboardFocus: view.keyboardFocus === "exclusive" ? WlrKeyboardFocus.Exclusive
-      : view.keyboardFocus === "none" ? WlrKeyboardFocus.None : WlrKeyboardFocus.OnDemand
+    // Desktop missions sit above full-screen windows, so the next step stays in sight.
+    WlrLayershell.layer: view.stage === "corner" ? WlrLayer.Overlay : WlrLayer.Top
+    // The Academy holds the keyboard so a drifting pointer can't take it (Omarchy
+    // focuses whatever is under the mouse), and lets go for steps done in other windows.
+    WlrLayershell.keyboardFocus: view.keyboardFocus === "none" ? WlrKeyboardFocus.None : WlrKeyboardFocus.Exclusive
 
-    Rectangle {
-      id: card
+    MissionView {
+      id: view
       anchors.fill: parent
-      implicitWidth: view.implicitWidth
-      implicitHeight: view.implicitHeight
-      radius: Style.cornerRadius
-      color: Color.popups.background
-      border.color: Color.popups.border
-      border.width: 2
-
-      MissionView {
-        id: view
-        anchors.fill: parent
-        focus: true
-        textColor: Color.popups.text
-        dimColor: Color.muted
-        accentColor: Color.accent
-        boltColor: Color.foreground
-        backgroundColor: Color.popups.background
-        fontFamily: Style.font.family
-        fontSize: Math.round(Style.font.body * 1.3)
-        hintClock: root.opened
-        onProgressSaved: (progress) => progressFile.setText(Engine.serializeProgress(progress))
-        onExitRequested: root.dismiss()
-      }
+      focus: true
+      theme: root.academyTheme
+      fontFamily: Style.font.family
+      fontSize: Math.round(Style.font.body * 1.3)
+      hintClock: root.opened
+      loginSession: Quickshell.env("XDG_SESSION_ID") || ""
+      onProgressSaved: (progress) => progressFile.setText(Engine.serializeProgress(progress))
+      onExitRequested: root.dismiss()
     }
   }
 }

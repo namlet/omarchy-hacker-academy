@@ -128,7 +128,9 @@ function windowAddress(address) {
   return String(address).replace(/^0x/, "")
 }
 
-// A window opening or closing, from Hyprland's raw events; null for anything else.
+// A window opening, closing, taking the keyboard, floating, going full screen, or
+// moving to another workspace, the learner switching workspaces, or a menu, from
+// Hyprland's raw events; null for anything else.
 // openwindow data is "address,workspace,class,title" (the title may contain commas);
 // closewindow data is "address".
 function windowEvent(event) {
@@ -139,6 +141,25 @@ function windowEvent(event) {
     return { action: "open", address: windowAddress(parts[0]), app: appKind(parts[2]) }
   if (name === "closewindow" && parts[0] !== "")
     return { action: "close", address: windowAddress(parts[0]), app: "" }
+  // The window that hears the keyboard; empty when none does.
+  if (name === "activewindowv2")
+    return { action: "focus", address: windowAddress(parts[0]), app: "" }
+  // One of Omarchy's menus (the Omarchy menu, the apps list, the keybindings sheet)
+  // opened or closed. They all share one layer, so the step says which it wants.
+  if ((name === "openlayer" || name === "closelayer") && parts[0] === "omarchy-menu")
+    return { action: "menu", on: name === "openlayer", address: "", app: "" }
+  // The learner switched to another workspace ("id,name").
+  if (name === "workspacev2" && parts[0] !== "")
+    return { action: "workspace", workspace: Number(parts[0]), address: "", app: "" }
+  // A window was carried to another workspace ("address,id,name").
+  if (name === "movewindowv2" && parts.length >= 2)
+    return { action: "carry", address: windowAddress(parts[0]), workspace: Number(parts[1]), app: "" }
+  // A window started floating ("address,1") or went back into the tiles ("address,0").
+  if (name === "changefloatingmode" && parts.length >= 2)
+    return { action: "float", address: windowAddress(parts[0]), on: parts[1] === "1", app: "" }
+  // The window in the spotlight went full screen ("1") or back ("0").
+  if (name === "fullscreen")
+    return { action: "fullscreen", on: parts[0] === "1", address: "", app: "" }
   return null
 }
 
@@ -169,6 +190,7 @@ if (typeof module !== "undefined") {
     pressedLabels: pressedLabels,
     appKind: appKind,
     windowEvent: windowEvent,
+    windowAddress: windowAddress,
     needsOwnWorkspace: needsOwnWorkspace
   }
 }
