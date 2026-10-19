@@ -2,6 +2,7 @@ import QtQuick
 import QtTest
 import "../components"
 import "../Engine.js" as Engine
+import "../Missions.js" as Missions
 
 Item {
   width: 1100
@@ -185,7 +186,7 @@ Item {
       view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2], current: null }
       view.begin()
       compare([view.session.mission, view.session.step], [3, 0])
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], current: null }
       view.begin()
       verify(view.finishedAll)
       verify(findChild(view, "comingSoon").visible)
@@ -738,6 +739,46 @@ Item {
       verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(8) !== -1)
     }
 
+    // ------------------------------------------------------------ mission 9
+
+    function test_mission_nine_end_to_end() {
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8], current: { mission: 9, step: 0, codename: "Zero" } }
+      view.begin()
+      wait(20)
+      const w = view.implicitWidth, h = view.implicitHeight
+      clickItem("button-ready")
+      waitForCelebration()
+      menu(true)
+      waitForCelebration()
+      menu(false)
+      waitForCelebration()
+      menu(true)
+      waitForCelebration()
+      menu(false)
+      waitForCelebration()
+
+      windowOpens("t1", "foot")
+      windowOpens("t2", "foot")
+      verify(!view.celebrating, "two of three")
+      windowOpens("t3", "foot")
+      waitForCelebration()
+      verify(findChild(view, "combo-Delete").visible)
+      windowCloses("t1")
+      windowCloses("t2")
+      windowCloses("t3")
+      waitForCelebration()
+
+      clickItem("button-help")
+      waitForCelebration()
+      verify(findChild(view, "rankUp").visible)
+      compare(findChild(view, "rankName").text, "WHITE HAT")
+      compare([view.implicitWidth, view.implicitHeight], [w, h])
+      clickItem("button-finish")
+      waitForCelebration()
+      verify(saved.signalArguments[saved.count - 1][0].completed.indexOf(9) !== -1)
+      verify(view.partDone)
+    }
+
     function test_mission_three_keys_light_up_when_help_grows() {
       startMissionThree(1)
       verify(!findChild(view, "combo-Win").lit)
@@ -786,12 +827,12 @@ Item {
     }
 
     function test_the_map_shows_the_campaign_when_every_mission_is_done() {
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], current: null }
       view.begin()
       wait(20)
       verify(findChild(view, "campaignMap").visible)
-      verify(findChild(view, "badge-Recruit").border.color === findChild(view, "badge-Specialist").border.color, "both earned")
-      verify(findChild(view, "badge-White Hat").border.color !== findChild(view, "badge-Specialist").border.color, "not yet earned")
+      verify(findChild(view, "badge-Recruit").border.color === findChild(view, "badge-White Hat").border.color, "all earned")
+      compare(findChild(view, "comingSoon").text, Missions.UI.partDone)
     }
 
     function test_character_colors_can_follow_the_theme() {
@@ -825,7 +866,7 @@ Item {
     }
 
     function test_nothing_to_skip_once_every_mission_is_done() {
-      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8], current: null }
+      view.progress = { version: 1, codename: "Zero", completed: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], current: null }
       view.begin()
       clickItem("settingsButton")
       verify(!findChild(view, "settings-skip").visible)

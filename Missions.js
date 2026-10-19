@@ -817,6 +817,120 @@ var MISSIONS = [
         }
       }
     ]
+  },
+  {
+    id: "rescue",
+    title: "Rescue Protocol",
+    stage: "corner",
+    steps: [
+      {
+        speaker: "mentor",
+        lines: ["Even the best hackers get stuck.", "Today you learn the rescue moves."],
+        expect: { type: "button", id: "ready", label: "Show me", key: "Enter" },
+        success: { speaker: "glitch", line: "Stuck? I love it when people get stuck." },
+        hint: {
+          bolt: "Click the button to start!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Rescue move one: Esc backs out of almost anything.", "Open the Omarchy menu so you can try it."],
+        combo: ["Win", "Space"],
+        expect: { type: "menu", open: true, label: "Open the Omarchy menu." },
+        success: { speaker: "mentor", line: "Now pretend you're stuck in there." },
+        hint: {
+          bolt: "Hold Win, then tap the long Space bar.",
+          keys: ["Win", "Space"],
+          demo: "Space is the long key at the bottom. Hold Win and tap it."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Tap Esc to escape."],
+        combo: ["Esc"],
+        expect: { type: "menu", open: false, label: "Back out with Esc." },
+        success: { speaker: "bolt", line: "Escaped! Esc is my favorite key now." },
+        hint: {
+          bolt: "Esc is the top left key.",
+          keys: ["Esc"],
+          demo: "Tap Esc once. If the menu stays, tap it again."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Rescue move two: look up any key you forget.", "Win and K shows them all."],
+        combo: ["Win", "K"],
+        expect: { type: "menu", open: true, label: "Open the list of keys." },
+        success: { speaker: "bolt", line: "No need to remember them all!" },
+        hint: {
+          bolt: "Hold Win, then tap K.",
+          keys: ["Win", "K"],
+          demo: "K is in the middle row of letters. Hold Win and tap K."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Esc closes the list."],
+        combo: ["Esc"],
+        expect: { type: "menu", open: false, label: "Close the list." },
+        success: { speaker: "glitch", line: "Fine. Then I'll make a mess you can't fix!" },
+        hint: {
+          bolt: "Esc is the top left key.",
+          keys: ["Esc"],
+          demo: "Tap Esc once."
+        }
+      },
+      {
+        speaker: "glitch",
+        lines: ["I dare you to open three terminals.", "Let's see you clean that up!"],
+        combo: ["Win", "Enter"],
+        expect: { type: "window", action: "open", app: "terminal", times: 3, label: "Open three terminals." },
+        success: { speaker: "glitch", line: "Ha! What a tangle!" },
+        hint: {
+          bolt: "Win and Enter, three times!",
+          keys: ["Win", "Enter"],
+          demo: "Hold Win and tap Enter. Do it three times."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["Rescue move three: Ctrl, Alt, and Delete closes every window.", "Use it when everything is a mess."],
+        combo: ["Ctrl", "Alt", "Delete"],
+        needs: { app: "terminal", count: 3 },
+        expect: { type: "window", action: "close", app: "terminal", times: 3, label: "Close every window at once." },
+        success: { speaker: "glitch", line: "My tangle! It's all gone!" },
+        hint: {
+          bolt: "Hold Ctrl and Alt. Then tap Delete.",
+          keys: ["Ctrl", "Alt", "Delete"],
+          demo: "Ctrl and Alt are at the bottom left. Delete is at the top right."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["The last rescue move: ask a grown-up.", "Even White Hats ask for help."],
+        expect: { type: "button", id: "help", label: "Got it", key: "Enter" },
+        success: { speaker: "bolt", line: "I ask for help all the time!" },
+        hint: {
+          bolt: "Click the button. You know how!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      },
+      {
+        speaker: "mentor",
+        lines: ["You finished Part 1, {codename}.", "You are a White Hat now."],
+        badge: "White Hat",
+        expect: { type: "button", id: "finish", label: "Finish mission", key: "Enter" },
+        success: { speaker: "bolt", line: "White Hat {codename}! Beep boop hooray!" },
+        hint: {
+          bolt: "Click the button. You know how!",
+          keys: [],
+          demo: "Move the arrow onto the button. Then click once."
+        }
+      }
+    ]
   }
 ]
 
@@ -848,6 +962,8 @@ var UI = {
   badges: "Badges",
   locked: "Locked",
   nextPartLocked: "Real hackers type their orders. Become a White Hat to open it.",
+  nextPartSoon: "Real hackers type their orders. Your next training is on its way.",
+  partDone: "You finished Part 1! You are a White Hat now.",
   progressSaved: "Progress saved",
   caught: "Caught",
   tapped: "Tapped",
