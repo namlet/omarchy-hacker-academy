@@ -4,6 +4,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
+import qs.Commons as Commons
 import "components"
 import "Engine.js" as Engine
 import "Theme.js" as Theme
@@ -70,8 +71,8 @@ Item {
   // Color doesn't carry. Reread when the shell's colors change, i.e. on a theme switch.
   property string themeColors: ""
   readonly property var academyTheme: Theme.palette(Theme.parseColors(root.themeColors), {
-    background: String(Color.background), foreground: String(Color.foreground), accent: String(Color.accent),
-    urgent: String(Color.urgent), muted: String(Color.muted)
+    background: String(Commons.Color.background), foreground: String(Commons.Color.foreground), accent: String(Commons.Color.accent),
+    urgent: String(Commons.Color.urgent), muted: String(Commons.Color.muted)
   })
 
   FileView {
