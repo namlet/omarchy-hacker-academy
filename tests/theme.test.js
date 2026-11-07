@@ -1,5 +1,7 @@
 const { test } = require("node:test")
 const assert = require("node:assert/strict")
+const fs = require("node:fs")
+const path = require("node:path")
 const Theme = require("../Theme.js")
 const { SPRITES } = require("../Sprites.js")
 
@@ -37,4 +39,14 @@ test("classic sprites keep their own colors; matching the theme swaps the themed
   assert.equal(themed.B, "#ff0000", "Bolt's body is the accent")
   assert.equal(themed.b, Theme.shade("#ff0000", -0.4), "its shading follows")
   assert.equal(themed.K, bolt.pal.K, "outlines stay")
+})
+
+test("QML reads the shell's palette through the Commons alias", () => {
+  // Qt 6.12's QtQuick has its own Color, which shadows the bare name from qs.Commons.
+  const root = path.join(__dirname, "..")
+  const files = fs.readdirSync(root).filter(f => f.endsWith(".qml")).map(f => path.join(root, f))
+  const dir = path.join(root, "components")
+  files.push(...fs.readdirSync(dir).filter(f => f.endsWith(".qml")).map(f => path.join(dir, f)))
+  for (const file of files)
+    assert.doesNotMatch(fs.readFileSync(file, "utf8"), /(^|[^.\w])Color\.\w/m, path.relative(root, file))
 })
